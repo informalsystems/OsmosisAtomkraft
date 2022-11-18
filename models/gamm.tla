@@ -5,12 +5,12 @@ EXTENDS
     Sequences,
     gamm_typedefs,
     status_codes,
-    TLC
+    Apalache
 
 VARIABLE
     \* @type: Str -> [amount: Int, weight: Int];
     pool_assets,
-    \* @type: [share_denom: Str, amount: Int];
+    \* @type: COIN;
     total_shares,
     \* @type: Int;
     total_weight,
@@ -26,46 +26,56 @@ VARIABLE
 \* @type: (Str, Str -> [amount: Int, weight: Int]) => Bool;
 CreatePool(sender, initial_assets) == 
     /\  pool_assets' = [x \in DOMAIN initial_assets |-> [amount |-> initial_assets[x].amount, weight |-> (initial_assets[x].weight * GuaranteedWeightPrecision)]]
-    /\  total_shares' = [share_denom |-> InitPoolShareDenom, amount |-> InitPoolShareAmount]
-    \*TODO* /\  total_weight' = ApaFoldSet(LAMBDA x, y: x + pool_assets[y][1] * pool_assets[y][2], 0, DOMAIN pool_assets) \* sum of all pool_assets' "weight"
+    /\  total_shares' = [denom |-> InitPoolShareDenom, amount |-> InitPoolShareAmount]
+    /\  total_weight' = 
+            LET Add(sum, d) == sum + pool_assets'[d].weight IN
+            FoldSet(Add, 0, DOMAIN pool_assets')
     /\  users' = {sender}
     /\  outcome_status' = CREATE_SUCCESS
     /\  action_taken' = [
             poolId          |-> 1,              \* TODO * - Add counter or numPools variable
             sender          |-> sender,
-            action_type     |-> "create pool"
+            action_type     |-> "create pool",
+            shares          |-> total_shares'.amount
         ]
-    /\  UNCHANGED <<total_weight>>
 
 \* @type: (Str, Int) => Bool;
 JoinPool(sender, shareOutAmount) ==
-    \*LET poolLiquidity == <<>> IN          \* TODO *  Seq([denom, amount]) <= pool_assets: denom -> [amount, weight]
-    LET neededLpLiquidity == GetMaximalNoSwapLPAmount(shareOutAmount, total_shares, <<>>) IN
-    LET sharesAndTokensJoined == CalcJoinPoolNoSwapShares(neededLpLiquidity) IN
+    \* poolLiquidity: Seq(COIN) FROM pool_assets: denom -> [amount, weight]
+    LET poolLiquidity ==
+        LET AppendSeq(seq, d) == Append(seq, [denom |-> d, amount |-> pool_assets[d].amount]) IN
+            FoldSet(AppendSeq, <<>>, DOMAIN pool_assets) IN
+    LET neededLpLiquidity == GetMaximalNoSwapLPAmount(shareOutAmount, total_shares.amount, poolLiquidity) IN
+    LET sharesAndTokensJoined == CalcJoinPoolNoSwapShares(neededLpLiquidity, total_shares.amount, poolLiquidity) IN
     /\  pool_assets' = [d \in DOMAIN pool_assets |-> [amount |-> pool_assets[d].amount + sharesAndTokensJoined.tokensJoined[d], weight |-> pool_assets[d].weight]]
     /\  total_shares' = [total_shares EXCEPT !.amount = (@ + sharesAndTokensJoined.numShares)]
     /\  users' = users \union {sender}
-    /\  outcome_status' = JOIN_SUCCESS
     /\  action_taken' = [
             poolId          |-> 1,              \* TODO * - Add counter or numPools variable
             sender          |-> sender,
-            action_type     |-> "join pool"
+            action_type     |-> "join pool",
+            shares          |-> shareOutAmount
         ]
+    /\  outcome_status' = JOIN_SUCCESS
     /\  UNCHANGED <<total_weight>>
 
 \* @type: (Str, Int) => Bool;
 ExitPool(sender, exitingShares) ==
-    (*
-        exitingCoins, err = p.CalcExitPoolCoinsFromShares(ctx, exitingShares, exitFee)
-        balances := p.GetTotalPoolLiquidity(ctx).Sub(exitingCoins)  \*sdk.Coins
-    *)
-    \*LET balances == Sub(total_liquidity, exitingCoins) IN   \* <= Str -> Int        \* denom -> amount
-    \*/\  total_shares' = [total_shares EXCEPT !.amount = (@ - exitingShares)]
-    \*/\  pool_assets' = [d \in DOMAIN pool_assets |-> [pool_assets[d].amount - balances[d], pool_assets[d].weight]]
+    LET poolLiquidity ==
+        LET AppendSeq(seq, d) == Append(seq, [denom |-> d, amount |-> pool_assets[d].amount]) IN
+            FoldSet(AppendSeq, <<>>, DOMAIN pool_assets) IN
+    LET exitingCoins == CalcExitPoolCoinsFromShares(exitingShares, total_shares.amount, poolLiquidity) IN
 
-    /\  UNCHANGED <<total_weight>>
+    /\  pool_assets' = [d \in DOMAIN pool_assets |-> [amount |-> (pool_assets[d].amount - exitingCoins[d]), weight |-> pool_assets[d].weight]]
+    /\  total_shares' = [total_shares EXCEPT !.amount = (@ - exitingShares)]
     /\  users' = users \ {sender}
+    /\  action_taken' = [
+            poolId          |-> 1,              \* TODO * - Add counter or numPools variable
+            sender          |-> sender,
+            action_type     |-> "exit pool",
+            shares          |-> exitingShares
+        ]
     /\  outcome_status' = EXIT_SUCCESS
-    /\  UNCHANGED <<total_shares,pool_assets,action_taken>>
+    /\  UNCHANGED <<total_weight>>
 
 ====
