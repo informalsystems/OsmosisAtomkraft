@@ -13,11 +13,17 @@ Init ==
 
 Next == 
     \E sender \in Identifiers:
-        \/ \E amount \in Amounts:
-            \/ JoinPool(sender, amount)
-            \/ ExitPool(sender, amount)
-        \/ \E initialAssets \in InitialAssets:
-            CreatePool(sender, initialAssets)
+        \/ \E amount \in Int:
+            /\ IsDec(amount)
+            /\ \/ JoinPool(sender, amount)
+               \/ ExitPool(sender, amount)
+        \/ \E initAmounts \in [Denoms -> Int], initWeights \in [Denoms -> Int]:
+            /\ \A d \in Denoms: IsDec(initAmounts[d])
+            /\ \A d \in Denoms: IsDec(initWeights[d])
+            /\  LET initialAssets ==
+                 [d \in Denoms |-> [ amount |-> initAmounts[d], weight |-> initWeights[d]] ]
+                IN
+                CreatePool(sender, initialAssets)
 
 (* ======== Invariants ======= *)
 
