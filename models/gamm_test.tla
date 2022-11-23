@@ -25,6 +25,8 @@ Next ==
                 IN
                 CreatePool(sender, initialAssets)
 
+View == <<pool_assets, users, outcome_status>>
+
 (* ======== Invariants ======= *)
 
 CreateSuccess ==
@@ -36,7 +38,7 @@ CreateSuccessCEX == ~ CreateSuccess
 \* alias apalache="java -jar apalache-pkg-0.17.5-full.jar --nworkers=8"
 \* apalache check --config=gamm_test.cfg --inv=CreateJoinAndExitPoolCEX --max-error=3 gamm_test.tla
 (* ---> *)
-\* @type: Seq(STATE) => Bool;
+\* @type: Seq($state) => Bool;
 CreateJoinAndExitPool(trace) ==
     \E i, j \in 1..5:
         /\  LET stateI1 == trace[i] IN
@@ -52,9 +54,9 @@ CreateJoinAndExitPool(trace) ==
             /\ stateJ1.action_taken.sender = stateJ2.action_taken.sender
             /\ Len(trace) > j
 
-CreateJoinAndExitPoolCEX(trace) == ~ CreateJoinAndExitPool(trace)
+CreateJoinAndExitPoolCEX(trace) == ~CreateJoinAndExitPool(trace)
 
-\* @type: Seq(STATE) => Bool;
+\* @type: Seq($state) => Bool;
 CreateTwoPoolsJoinAndExitFromFirst(trace) ==
     \E i, j \in 1..7:
         /\  LET stateI1 == trace[i] IN
@@ -70,7 +72,7 @@ CreateTwoPoolsJoinAndExitFromFirst(trace) ==
             /\ stateI1.action_taken.poolId = stateJ2.action_taken.poolId
             /\ Len(trace) > j
 
-CreateTwoPoolsJoinAndExitFromFirstCEX(trace) == ~ CreateTwoPoolsJoinAndExitFromFirst(trace)
+CreateTwoPoolsJoinAndExitFromFirstCEX(trace) == ~CreateTwoPoolsJoinAndExitFromFirst(trace)
 (* <--- *)
 
 ====

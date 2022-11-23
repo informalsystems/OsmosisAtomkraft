@@ -57,19 +57,22 @@ ToDec(bigint) == bigint * ONE
  *  - the panic flag, which is set to true iff an error occurs;
  *  - the integer result, if the panic flag is false.
  *
- * @type: (Int, Int) => <<Bool, Int>>;
+ * @type: (Int, Int) => Int;
  *)
 QuoInt(x, y) ==
     IF y = 0
     THEN \* division by zero
-        <<TRUE, 0>>
+        \*<<TRUE, 0>>
+        0
     ELSE LET AbsResult == Abs(x) \div Abs(y) IN
         \* we are using absolute values, as integer division behaves differently
         \* on negatives numbers in different languages:
         \* https://github.com/informalsystems/apalache/issues/331
         IF (x < 0 /\ y > 0) \/ (x > 0 /\ y < 0)
-        THEN <<FALSE, -(Abs(x) \div Abs(y))>>
-        ELSE <<FALSE, Abs(x) \div Abs(y)>>
+        \*THEN <<FALSE, -(Abs(x) \div Abs(y))>>
+        \*ELSE <<FALSE, Abs(x) \div Abs(y)>>
+        THEN -(Abs(x) \div Abs(y))
+        ELSE Abs(x) \div Abs(y)
 
 (**
  * Remove a PRECISION amount of rightmost digits and perform bankers rounding
@@ -99,15 +102,16 @@ ChopPrecisionAndRound(x) ==
  *  - the panic flag, which is set to true iff an overflow occurs;
  *  - the integer result, if the panic flag is false.
  *
- * @type: (Int, Int) => <<Bool, Int>>;
+ * @type: (Int, Int) => Int;
  *)
 Mul(x, y) ==
     \* the perfect math product of two integers, which we have to round
     LET perfectProd == x * y IN
     LET chopped == ChopPrecisionAndRound(perfectProd) IN
     \* equivalent to absResult.BitLen() > maxDecBitLen of Golang
-    LET shouldPanic == Abs(chopped) >= 2^MAX_DEC_BIT_LEN IN
-    <<shouldPanic, chopped>>
+\*    LET shouldPanic == Abs(chopped) >= 2^MAX_DEC_BIT_LEN IN
+\*    <<shouldPanic, chopped>>
+        chopped
 
 (**
  * Ceil returns the smallest interger value (as a decimal) that is greater than
@@ -123,5 +127,10 @@ Ceil(x) ==
  *)
 RoundInt(x) ==
     ChopPrecisionAndRound(x)
+
+(**
+ * TruncateInt truncates the decimal to its whole part
+ *)
+TruncateInt(x) == x \div PRECISION
 
 ================================================================================
