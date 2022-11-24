@@ -9,7 +9,16 @@
  *)
 EXTENDS Integers
 
-\* The number of decimal places after '.'
+\* In our specification, a decimal is a record that contains two fields:
+\*
+\*  - error is the error flag which is true
+\*    iff the decimal number is considered invalid (e.g., overflow),
+\*  - value is the math integer representing the decimal intPart.fractionalPart as
+\*    intPart * 10^PRECISION + fractionalPart
+\*
+\* @typeAlias: dec = { error: Bool, value: Int };
+\*
+\* The number of decimal places after '.', that is, in the FRACTIONAL part.
 PRECISION == 18
 
 \* The maximum number of bits to represent a decimal,
@@ -28,6 +37,8 @@ HALF == 5 * 10^(PRECISION - 1)
 
 (**
  * Return the absolute value of a math integer.
+ *
+ * @type: Int => Int;
  *)
 Abs(x) ==
     IF x >= 0 THEN x ELSE -x
@@ -37,7 +48,9 @@ Abs(x) ==
 \* Exists in range from -(2^256 - 1) to 2^256 - 1.
 
 (**
- * Does an integer represent a Cosmos decimal?
+ * Can an integer represent a Cosmos decimal?
+ *
+ * @type: Int => Bool;
  *)
 IsDec(bigint) ==
     Abs(bigint) <= (2^256 - 1) * ONE + 10^(PRECISION + 1) - 1
@@ -45,55 +58,57 @@ IsDec(bigint) ==
 (**
  * Converts Int number to sdk.Dec number.
  * Creates new decimal number from big integer assuming WHOLE numbers.
+ *
+ * @type: Int => $dec;
  *)
-ToDec(bigint) == bigint * ONE
+ToDec(bigint) == [ error |-> ~IsDec(bigint * ONE), value |-> bigint * ONE ]
 
 (**
  * Divides the sdk.Dec number with sdk.Int number and returns sdk.Dec number
  * but only the truncated part (unlike the QuoRem, which returns the whole
  * number, and the remainder) - it implements food division.
  *
- * In our specification, QuoInt returns a pair:
- *  - the panic flag, which is set to true iff an error occurs;
- *  - the integer result, if the panic flag is false.
- *
- * @type: (Int, Int) => Int;
+ * @type: ($dec, Int) => $dec;
  *)
 QuoInt(x, y) ==
-    IF y = 0
-    THEN \* division by zero
-        \*<<TRUE, 0>>
-        0
-    ELSE LET AbsResult == Abs(x) \div Abs(y) IN
-        \* we are using absolute values, as integer division behaves differently
-        \* on negatives numbers in different languages:
-        \* https://github.com/informalsystems/apalache/issues/331
-        IF (x < 0 /\ y > 0) \/ (x > 0 /\ y < 0)
-        \*THEN <<FALSE, -(Abs(x) \div Abs(y))>>
-        \*ELSE <<FALSE, Abs(x) \div Abs(y)>>
-        THEN -(Abs(x) \div Abs(y))
-        ELSE Abs(x) \div Abs(y)
+    IF x.error
+    THEN [ error |-> TRUE, value |-> -1 ] \* propagate the error
+    ELSE IF y = 0
+        THEN \* division by zero
+            [ error |-> TRUE, value |-> -1 ]
+        ELSE LET absResult == Abs(x.value) \div Abs(y) IN
+            \* we are using absolute values, as integer division behaves differently
+            \* on negatives numbers in different languages:
+            \* https://github.com/informalsystems/apalache/issues/331
+            LET isNeg ==
+              (x.value < 0 /\ y > 0) \/ (x.value > 0 /\ y < 0)
+            IN
+            [ error |-> FALSE, value |-> IF isNeg THEN -absResult ELSE absResult]
 
 (**
  * Remove a PRECISION amount of rightmost digits and perform bankers rounding
  * on the remainder (gaussian rounding) on the digits which have been removed.
+ *
+ * @type: $dec => $dec;
  *)
 ChopPrecisionAndRound(x) ==
-    LET absX == Abs(x) IN
-    \* the whole part, that is, before '.'
-    LET quo == absX \div ONE IN
-    \* the part after '.'
-    LET rem == absX % ONE IN
-    LET absResult ==
-        \* when at half precisely, use bankers rounding:
-        \* round up to the even number
-        IF rem < HALF \/ (rem = HALF /\ quo % 2 = 0)
-        THEN quo
-        ELSE quo + 1
-    IN
-    IF x > 0
-    THEN absResult
-    ELSE -absResult
+    IF x.error
+    THEN x  \* propagate the error
+    ELSE
+        LET absX == Abs(x.value) IN
+        \* the integer part, that is, before '.'
+        LET quo == absX \div ONE IN
+        \* the part after '.'
+        LET rem == absX % ONE IN
+        LET absResult ==
+            \* when at half precisely, use bankers rounding:
+            \* round up to the even number
+            IF rem < HALF \/ (rem = HALF /\ quo % 2 = 0)
+            THEN quo
+            ELSE quo + 1
+        IN
+        [ error |-> FALSE,
+          value |-> IF x.value >= 0 THEN absResult ELSE -absResult ]
 
 (**
  * Decimal multiplication.
@@ -102,35 +117,73 @@ ChopPrecisionAndRound(x) ==
  *  - the panic flag, which is set to true iff an overflow occurs;
  *  - the integer result, if the panic flag is false.
  *
- * @type: (Int, Int) => Int;
+ * @type: ($dec, Int) => $dec;
+ *)
+MulInt(x, y) ==
+    IF x.error
+    THEN [ error |-> TRUE, value |-> -1 ] \* propagate the error
+    ELSE
+        \* the perfect math product of two integers, which we have to round
+        LET perfectProd == x.value * y IN
+        LET chopped ==
+          ChopPrecisionAndRound([ error |-> FALSE, value |-> perfectProd])
+        IN
+        \* equivalent to absResult.BitLen() > maxDecBitLen of Golang
+        LET shouldPanic == Abs(chopped.value) >= 2^MAX_DEC_BIT_LEN IN
+        [ error |-> shouldPanic, value |-> chopped.value ]
+
+(**
+ * Decimal multiplication.
+ *
+ * In our specification, Mul returns a pair:
+ *  - the panic flag, which is set to true iff an overflow occurs;
+ *  - the integer result, if the panic flag is false.
+ *
+ * @type: ($dec, $dec) => $dec;
  *)
 Mul(x, y) ==
-    \* the perfect math product of two integers, which we have to round
-    LET perfectProd == x * y IN
-    LET chopped == ChopPrecisionAndRound(perfectProd) IN
-    \* equivalent to absResult.BitLen() > maxDecBitLen of Golang
-\*    LET shouldPanic == Abs(chopped) >= 2^MAX_DEC_BIT_LEN IN
-\*    <<shouldPanic, chopped>>
-        chopped
+    IF x.error \/ y.error
+    THEN [ error |-> TRUE, value |-> -1 ] \* propagate the error
+    ELSE
+        \* the perfect math product of two integers, which we have to round
+        LET perfectProd == x.value * y.value IN
+        LET chopped ==
+          ChopPrecisionAndRound([ error |-> FALSE, value |-> perfectProd])
+        IN
+        \* equivalent to absResult.BitLen() > maxDecBitLen of Golang
+        LET shouldPanic == Abs(chopped.value) >= 2^MAX_DEC_BIT_LEN IN
+        [ error |-> shouldPanic, value |-> chopped.value ]
 
 (**
  * Ceil returns the smallest interger value (as a decimal) that is greater than
  * or equal to the given decimal.
+ *
+ * @type: $dec => $dec;
  *)
 Ceil(x) ==
-    IF x % PRECISION = 0 \/ x < 0
-    THEN x
-    ELSE ((x \div PRECISION) + 1) * PRECISION
+    IF x.error
+    THEN x  \* propagate the panic
+    ELSE
+        LET value ==
+            IF x.value % PRECISION = 0 \/ x.value < 0
+            THEN x.value
+            ELSE ((x.value \div PRECISION) + 1) * PRECISION
+        IN
+        [ error |-> FALSE, value |-> value ]
 
 (**
  * RoundInt round the decimal using bankers rounding
+ *
+ * @type: $dec => $dec;
  *)
 RoundInt(x) ==
     ChopPrecisionAndRound(x)
 
 (**
  * TruncateInt truncates the decimal to its whole part
+ *
+ * @type: $dec => Int;
  *)
-TruncateInt(x) == x \div PRECISION
+TruncateInt(x) == x.value \div PRECISION
 
 ================================================================================

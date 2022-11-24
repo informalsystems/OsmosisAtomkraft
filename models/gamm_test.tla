@@ -13,11 +13,11 @@ Init ==
 
 Next == 
     \E sender \in Identifiers:
-        \/ \E amount \in Int:
+        \/ \E amount \in Nat:
             /\ IsDec(amount)
             /\ \/ JoinPool(sender, amount)
                \/ ExitPool(sender, amount)
-        \/ \E initAmounts \in [Denoms -> Int], initWeights \in [Denoms -> Int]:
+        \/ \E initAmounts \in [Denoms -> Nat], initWeights \in [Denoms -> Nat]:
             /\ \A d \in Denoms: IsDec(initAmounts[d])
             /\ \A d \in Denoms: IsDec(initWeights[d])
             /\  LET initialAssets ==
@@ -35,8 +35,8 @@ CreateSuccess ==
     /\ Cardinality(users) = 1
 CreateSuccessCEX == ~ CreateSuccess
 
-\* alias apalache="java -jar apalache-pkg-0.17.5-full.jar --nworkers=8"
-\* apalache check --config=gamm_test.cfg --inv=CreateJoinAndExitPoolCEX --max-error=3 gamm_test.tla
+\* alias apalache="java -jar $HOME/Downloads/apalache/lib/apalache.jar --nworkers=8"
+\* apalache check --config=gamm_test.cfg --inv=CreateJoinAndExitPoolCEX --view=View --max-error=3 gamm_test.tla
 (* ---> *)
 \* @type: Seq($state) => Bool;
 CreateJoinAndExitPool(trace) ==

@@ -47,34 +47,34 @@ InitPoolShareDenom == "gamm/pool/1"
 \* @type: Int;
 InitPoolShareAmount == 100 * ONE
 
-\* @type: (Str -> Int) => Str;
-Min(f) == CHOOSE x \in DOMAIN f: \A y \in DOMAIN f: f[x] <= f[y]
-\* @type: (Str -> Int) => Str;
-Max(f) == CHOOSE x \in DOMAIN f: \A y \in DOMAIN f: f[x] >= f[y]
+\* @type: (Str -> $dec) => Str;
+Min(f) == CHOOSE x \in DOMAIN f: \A y \in DOMAIN f: f[x].value <= f[y].value
+\* @type: (Str -> $dec) => Str;
+Max(f) == CHOOSE x \in DOMAIN f: \A y \in DOMAIN f: f[x].value >= f[y].value
 
 \* @type: (Int, Int, Str -> {amount: Int, weight: Int}) => Str -> Int;
 GetMaximalNoSwapLPAmount(shareOutAmount, totalShares, poolLiquidity) ==
     [d \in DOMAIN poolLiquidity |->
-        TruncateInt(Mul(ToDec(poolLiquidity[d].amount), QuoInt(ToDec(shareOutAmount), totalShares)))]
+        TruncateInt(Mul(ToDec(poolLiquidity[d].amount), 
+                        QuoInt(ToDec(shareOutAmount), totalShares)))]
 
 \* @type: (Str -> Int, Int, Str -> {amount: Int, weight: Int}) => {numShares: Int, tokensJoined: Str -> Int};
 CalcJoinPoolNoSwapShares(tokensIn, totalShares, poolLiquidity) ==
-    \*LET sharesRatio == [d \in DOMAIN poolLiquidity |->
-    \*                        QuoInt(ToDec(tokensIn[d]), poolLiquidity[d].amount)] IN
-    \*LET minDenom == Min(sharesRatio) IN
-    \*LET maxDenom == Max(sharesRatio) IN
-    \*LET numShares == TruncateInt(Mul(sharesRatio[minDenom], totalShares)) IN
-    \*LET usedAmount == Mul(sharesRatio[minDenom], poolLiquidity[maxDenom].amount) IN
-    \*LET remCoin == IF sharesRatio[minDenom] = sharesRatio[maxDenom] THEN 0 ELSE poolLiquidity[maxDenom].amount - TruncateInt(Ceil(usedAmount)) IN
-    \*[numShares |-> numShares, 
-    \* tokensJoined |-> [d \in {maxDenom} |-> remCoin]]
-    [numShares |-> 0, 
-     tokensJoined |-> [d \in {""} |-> 0]]
+    LET sharesRatio == [d \in DOMAIN poolLiquidity |->
+                            QuoInt(ToDec(tokensIn[d]), poolLiquidity[d].amount)] IN
+    LET minDenom == Min(sharesRatio) IN
+    LET maxDenom == Max(sharesRatio) IN
+    LET numShares == TruncateInt(MulInt(sharesRatio[minDenom], totalShares)) IN
+    LET usedAmount == MulInt(sharesRatio[minDenom], poolLiquidity[maxDenom].amount) IN
+    LET remCoin == IF sharesRatio[minDenom] = sharesRatio[maxDenom] THEN 0 ELSE poolLiquidity[maxDenom].amount - TruncateInt(Ceil(usedAmount)) IN
+    [numShares |-> numShares, 
+     tokensJoined |-> [d \in {maxDenom} |-> remCoin]]
 
 \* exitFee == 0  =>  refundedShares == exitingShares.ToDec()
 \* @type: (Int, Int, Str -> {amount: Int, weight: Int}) => Str -> Int;
 CalcExitPoolCoinsFromShares(exitingShares, totalShares, poolLiquidity) ==
     [d \in DOMAIN poolLiquidity |->
-        TruncateInt(Mul(QuoInt(ToDec(exitingShares), totalShares), poolLiquidity[d].amount))]
+        TruncateInt(MulInt(QuoInt(ToDec(exitingShares), totalShares), 
+                           poolLiquidity[d].amount))]
 
 ====
