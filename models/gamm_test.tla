@@ -35,6 +35,22 @@ CreateSuccess ==
     /\ Cardinality(users) = 1
 CreateSuccessCEX == ~ CreateSuccess
 
+ExitSuccess ==
+    /\ outcome_status = EXIT_SUCCESS
+    /\ total_weight /= 0
+    /\ Cardinality(users) = 1
+
+NoExitSuccess ==
+    ~ExitSuccess
+
+ExitError ==
+    /\ outcome_status = EXIT_ERROR
+    /\ total_weight /= 0
+    /\ Cardinality(users) = 1
+
+NoExitError ==
+    ~ExitError
+
 \* alias apalache="java -jar $HOME/Downloads/apalache/lib/apalache.jar --nworkers=8"
 \* apalache check --config=gamm_test.cfg --inv=CreateJoinAndExitPoolCEX --view=View --max-error=3 gamm_test.tla
 (* ---> *)
