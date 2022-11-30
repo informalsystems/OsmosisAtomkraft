@@ -59,6 +59,30 @@ def state():
     return {}
 
 
+def get_current_lp(testnet: Testnet, pool_id: int, home_dir: Path):
+    rpc_addr = testnet.get_validator_port(0, "rpc")
+    args = (
+        f"{testnet.binary} "
+        "q gamm "
+        f"pool {pool_id} "
+        f"--home {home_dir} "
+        f"--chain-id {testnet.chain_id} "
+        f"--node {rpc_addr} "
+        "--output json "
+    ).split()
+    return json.loads(subprocess.check_output(args).decode())
+
+
+def log_current_lp(testnet: Testnet, pool_id: int, home_dir: Path):
+    lp_data = munch.munchify(get_current_lp(testnet, pool_id, home_dir))
+    logging.info("\tCurrent LP:")
+    logging.info("\t\tDenom: %s", lp_data.pool.total_shares.denom)
+    logging.info("\t\tShare: %s", lp_data.pool.total_shares.amount)
+    logging.info("\t\t\tAssets:")
+    for e in lp_data.pool.pool_assets:
+        logging.info("\t\t\t\t%s%s", e.token.amount, e.token.denom)
+
+
 @step("empty")
 def init(testnet: Testnet, state: Dict, home_dir: Path):
     """
@@ -148,6 +172,8 @@ def create_pool(
     with open(pool_conf_json_file, "w") as outfile:
         json.dump(pool_config, outfile, indent=4)
 
+    logging.info(munch.unmunchify(action_taken))
+
     # action = action_taken.action_type
     # we need to remember poolId -> created pool Id on chain, due to test asertions
     # read this from the result -> add mapping TLA_poolID -> chain_poolID (add this map as part of the def state)
@@ -202,16 +228,7 @@ def create_pool(
             msg = result.raw_log
             logging.info(f"\tFailure: (Code {code}) {msg}")
 
-    args = (
-        f"{testnet.binary} "
-        "q gamm "
-        f"pool {state['pool_id']} "
-        f"--home {home_dir} "
-        f"--chain-id {testnet.chain_id} "
-        f"--node {rpc_addr} "
-        "--output json "
-    ).split()
-    logging.info("\tCurrent LP: %s", subprocess.check_output(args).decode())
+    log_current_lp(testnet, state["pool_id"], home_dir)
 
 
 @step("join pool")
@@ -226,22 +243,12 @@ def join_pool(testnet: Testnet, state: Dict, action_taken, home_dir: Path):
     logging.info("Step: join pool")
     # Tx Msg: osmosisd tx gamm join-pool --pool-id --max-amounts-in --share-amount-out --from --chain-id
     # osmosisd tx gamm join-swap-extern-amount-in [token-in] [share-out-min-amount]
-    logging.info(action_taken)
+    logging.info(munch.unmunchify(action_taken))
 
     # create transaction and send it to nodes rpc port
     rpc_addr = testnet.get_validator_port(0, "rpc")
 
-    args = (
-        f"{testnet.binary} "
-        "q gamm "
-        f"pool {state['pool_id']} "
-        f"--home {home_dir} "
-        f"--chain-id {testnet.chain_id} "
-        f"--node {rpc_addr} "
-        "--output json "
-    ).split()
-
-    lp_data = json.loads(subprocess.check_output(args).decode())
+    lp_data = get_current_lp(testnet, state["pool_id"], home_dir)
 
     action_share = action_taken.shares
 
@@ -289,16 +296,7 @@ def join_pool(testnet: Testnet, state: Dict, action_taken, home_dir: Path):
             msg = result.raw_log
             logging.info(f"\tFailure: (Code {code}) {msg}")
 
-    args = (
-        f"{testnet.binary} "
-        "q gamm "
-        f"pool {state['pool_id']} "
-        f"--home {home_dir} "
-        f"--chain-id {testnet.chain_id} "
-        f"--node {rpc_addr} "
-        "--output json "
-    ).split()
-    logging.info("\tCurrent LP: %s", subprocess.check_output(args).decode())
+    log_current_lp(testnet, state["pool_id"], home_dir)
 
 
 @step("exit pool")
@@ -313,22 +311,12 @@ def exit_pool(testnet: Testnet, state: Dict, action_taken, home_dir: Path):
     logging.info("Step: exit pool")
     # Tx Msg:
     # osmosisd tx gamm exit-swap-extern-amount-out [token-out] [share-in-max-amount] [flags]
-    logging.info(action_taken)
+    logging.info(munch.unmunchify(action_taken))
 
     # create transaction and send it to nodes rpc port
     rpc_addr = testnet.get_validator_port(0, "rpc")
 
-    args = (
-        f"{testnet.binary} "
-        "q gamm "
-        f"pool {state['pool_id']} "
-        f"--home {home_dir} "
-        f"--chain-id {testnet.chain_id} "
-        f"--node {rpc_addr} "
-        "--output json "
-    ).split()
-
-    lp_data = json.loads(subprocess.check_output(args).decode())
+    lp_data = get_current_lp(testnet, state["pool_id"], home_dir)
 
     action_share = action_taken.shares
 
@@ -376,13 +364,4 @@ def exit_pool(testnet: Testnet, state: Dict, action_taken, home_dir: Path):
             msg = result.raw_log
             logging.info(f"\tFailure: (Code {code}) {msg}")
 
-    args = (
-        f"{testnet.binary} "
-        "q gamm "
-        f"pool {state['pool_id']} "
-        f"--home {home_dir} "
-        f"--chain-id {testnet.chain_id} "
-        f"--node {rpc_addr} "
-        "--output json "
-    ).split()
-    logging.info("\tCurrent LP: %s", subprocess.check_output(args).decode())
+    log_current_lp(testnet, state["pool_id"], home_dir)
