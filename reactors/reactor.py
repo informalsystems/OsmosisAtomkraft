@@ -22,14 +22,13 @@ import random
 import string
 import subprocess
 from pathlib import Path
-
+from typing import Dict
 
 import munch
 import pytest
 from atomkraft.chain import Testnet
 from atomkraft.chain.utils import TmEventSubscribe
 from modelator.pytest.decorators import step
-from typing import Dict
 
 keypath = "action"
 
@@ -45,7 +44,6 @@ def home_dir(tmp_path):
 def map_string(i, size: int):
     r = random.Random(i)
     return "".join(r.choices(string.ascii_lowercase + string.digits, k=size))
-
 
 
 @pytest.fixture
@@ -67,7 +65,7 @@ def init(testnet: Testnet, state: Dict, action_taken):
     Implements the effects of the step `init`
     on blockchain `testnet` and state `state`.
     It additionally has access to the model (trace) state variable `action_taken`.
-    """   
+    """
     logging.info("Step: init")
     POOL_ID = 0
 
@@ -80,10 +78,9 @@ def init(testnet: Testnet, state: Dict, action_taken):
     testnet.sleep(10)
     logging.info("Status: Testnet launched...\n")
 
-
     # Tendermint event sybscriber
-    with TmEventSubscribe({"tm.event":"NewBlock"}):
-         logging.info("\tStatus: Testnet launched...\n")
+    with TmEventSubscribe({"tm.event": "NewBlock"}):
+        logging.info("\tStatus: Testnet launched...\n")
 
     # recover accounts for a testnet
     for (user, account) in testnet.accounts.items():
@@ -109,15 +106,14 @@ def create_pool(testnet: Testnet, state: Dict, action_taken):
     It additionally has access to the model (trace) state variable `action_taken`.
     """
 
-    # TX Msg: osmosisd tx gamm create-pool --pool-file [config-file] --from WALLET_NAME --chain-id osmosis-1   
+    # TX Msg: osmosisd tx gamm create-pool --pool-file [config-file] --from WALLET_NAME --chain-id osmosis-1
     # file should be saved in pool-files directory by the name of pool_INV_NUM
     pool_file_location = "../pool-files/"
     POOL_ID += 1
     pool_file_name = f"pool-file-{pool_file_ID}.json"
     logging.info("Step: create pool")
 
-     
-    '''
+    """
     pool file should look like:
     {
         "weights": [list weighted denoms],
@@ -126,14 +122,13 @@ def create_pool(testnet: Testnet, state: Dict, action_taken):
         "exit-fee": [exit fee in percentage],
         "future-governor": [see options in pool parameters section above]
     } 
-    '''
+    """
     # pool_config: swap-fee, exit-fee,
-    # future-governor are now predefined, but maybe values should also be parsed form TLA spec 
+    # future-governor are now predefined, but maybe values should also be parsed form TLA spec
     init_deposit_uosmo = action_taken.pool_assets["OSMO"]["amount"]
     init_weight_uosmo = action_taken.pool_assets["OSMO"]["weight"]
     init_deposit_uatom = action_taken.pool_assets["ATOM"]["amount"]
     init_weight_uatom = action_taken.pool_assets["ATOM"]["weight"]
-
 
     pool_config = {
         "weights": "{init_weight_uosmo}uosmo, {init_weight_uatom}uatom",
@@ -151,7 +146,6 @@ def create_pool(testnet: Testnet, state: Dict, action_taken):
     with open(filepath, "w") as outfile:
         outfile.write(json_object)
 
-
     # action = action_taken.action_type
     # we need to remember poolId -> created pool Id on chain, due to test asertions
     # read this from the result -> add mapping TLA_poolID -> chain_poolID (add this map as part of the def state)
@@ -159,9 +153,9 @@ def create_pool(testnet: Testnet, state: Dict, action_taken):
 
     senderId = action_taken.sender
     sender = testnet.acc_addr(senderId)
-    
+
     # create transaction and send it to nodes rpc port
-    rpc_addr = testnet.get_validator_port(0,"rpc")
+    rpc_addr = testnet.get_validator_port(0, "rpc")
 
     args = (
         f"{testnet.binary}"
@@ -172,8 +166,8 @@ def create_pool(testnet: Testnet, state: Dict, action_taken):
         f"--chain-id {testnet.chain_id}"
         f"--node {rpc_addr}"
     ).split()
-    proc = subprocess.run (args, check=True, capture_output=True)
-    
+    proc = subprocess.run(args, check=True, capture_output=True)
+
     # subscribe to event or check the result of broadcasting the tx
     # event = TmEventSubscribe({"tm.event":"Tx"})._subscribe("AND pool-create.pool-id"):
 
@@ -191,20 +185,17 @@ def create_pool(testnet: Testnet, state: Dict, action_taken):
             if event.type == "create_pool":
                 assert event.attributes[0].key == "pool_id"
                 chain_pool_Id = event.attributes[0].value
-                break        
-    
+                break
+
             else:
-             raise RuntimeError("Did not find pool_id of the created pool")
+                raise RuntimeError("Did not find pool_id of the created pool")
     else:
         code = result["code"]
         msg = result["raw_log"]
         logging.info(f"\tFailure: (Code {code}) {msg}")
-     
-    
 
     if proc.stderr:
         logging.info(f"\tstderr: {proc.stderr.decode()}")
-
 
 
 @step("join pool")
@@ -230,4 +221,4 @@ def exit_pool(testnet: Testnet, state: Dict, action_taken):
 
     # TODO: replace the logging stub with the effects of the action `exit pool`
     logging.info("Step: exit pool")
-    #Tx Msg: 
+    # Tx Msg:
