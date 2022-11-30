@@ -1,7 +1,7 @@
 chain_id = "osmosis"
 validators = 3
 accounts = 2
-binary = "/home/mirel/go/bin/osmosisd"
+binary = "osmosis/build/osmosisd"
 hrp_prefix = "osmo"
 denom = "stake"
 coin_type = 118
