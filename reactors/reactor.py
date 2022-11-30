@@ -59,25 +59,27 @@ def state():
     return {}
 
 
-@step("init")
-def init(testnet: Testnet, state: Dict, action_taken):
+@step("empty")
+def init(testnet: Testnet, state: Dict, home_dir: Path):
     """
     Implements the effects of the step `init`
     on blockchain `testnet` and state `state`.
     It additionally has access to the model (trace) state variable `action_taken`.
     """
     logging.info("Step: init")
-    POOL_ID = 0
+    state["pool_id"] = 0
 
     # TODO Mirel: we need to be assigning wallets, as in transfer example in init state -> TLA spec change is needed
     # identifiers -> wallets
-    # testnet.set_accounts(wallets)
-    # testnet.set_account_balances(balances)
+    balances = {}
+    for e in ["A", "B", "C"]:
+        balances[e] = {}
+        for d in ["uosmo", "uatom"]:
+            balances[e][d] = int(1e10)
+    testnet.set_accounts(balances.keys())
+    testnet.set_account_balances(balances)
     testnet.verbose = True
     testnet.oneshot()
-    testnet.sleep(10)
-    logging.info("Status: Testnet launched...\n")
-
     # Tendermint event sybscriber
     with TmEventSubscribe({"tm.event": "NewBlock"}):
         logging.info("\tStatus: Testnet launched...\n")
@@ -99,7 +101,9 @@ def init(testnet: Testnet, state: Dict, action_taken):
 
 
 @step("create pool")
-def create_pool(testnet: Testnet, state: Dict, action_taken):
+def create_pool(
+    testnet: Testnet, state: Dict, pool_assets, action_taken, home_dir: Path
+):
     """
     Implements the effects of the step `create pool`
     on blockchain `testnet` and state `state`.
@@ -108,8 +112,9 @@ def create_pool(testnet: Testnet, state: Dict, action_taken):
 
     # TX Msg: osmosisd tx gamm create-pool --pool-file [config-file] --from WALLET_NAME --chain-id osmosis-1
     # file should be saved in pool-files directory by the name of pool_INV_NUM
-    pool_file_location = "../pool-files/"
-    POOL_ID += 1
+    pool_file_location = home_dir / "pool-files"
+    pool_file_location.mkdir(exist_ok=True, parents=True)
+    state["pool_id"] += 1
     pool_file_name = f"pool-file-{pool_file_ID}.json"
     logging.info("Step: create pool")
 
@@ -125,26 +130,23 @@ def create_pool(testnet: Testnet, state: Dict, action_taken):
     """
     # pool_config: swap-fee, exit-fee,
     # future-governor are now predefined, but maybe values should also be parsed form TLA spec
-    init_deposit_uosmo = action_taken.pool_assets["OSMO"]["amount"]
-    init_weight_uosmo = action_taken.pool_assets["OSMO"]["weight"]
-    init_deposit_uatom = action_taken.pool_assets["ATOM"]["amount"]
-    init_weight_uatom = action_taken.pool_assets["ATOM"]["weight"]
+    init_deposit_uosmo = pool_assets["OSMO"]["amount"]
+    init_weight_uosmo = pool_assets["OSMO"]["weight"]
+    init_deposit_uatom = pool_assets["ATOM"]["amount"]
+    init_weight_uatom = pool_assets["ATOM"]["weight"]
 
     pool_config = {
-        "weights": "{init_weight_uosmo}uosmo, {init_weight_uatom}uatom",
-        "initial-deposit": "{init_deposit_uosmo}uosmo, {init_deposit_uatom}uatom",
-        "swap-fee": "0.01",
-        "exit-fee": "0.01",
-        "future-governor": " ",
+        "weights": f"{init_weight_uosmo}uosmo, {init_weight_uatom}uatom",
+        "initial-deposit": f"{init_deposit_uosmo}uosmo, {init_deposit_uatom}uatom",
+        "swap-fee": "0.00",
+        "exit-fee": "0.00",
+        "future-governor": "",
     }
 
-    # Serializing json
-    json_object = json.dumps(pool_config, indent=4)
-
     # Writing to .json
-    filepath = os.path.join(pool_file_location, pool_file_name)
-    with open(filepath, "w") as outfile:
-        outfile.write(json_object)
+    pool_conf_json_file = os.path.join(pool_file_location, pool_file_name)
+    with open(pool_conf_json_file, "w") as outfile:
+        json.dump(pool_config, outfile, indent=4)
 
     # action = action_taken.action_type
     # we need to remember poolId -> created pool Id on chain, due to test asertions
@@ -158,48 +160,62 @@ def create_pool(testnet: Testnet, state: Dict, action_taken):
     rpc_addr = testnet.get_validator_port(0, "rpc")
 
     args = (
-        f"{testnet.binary}"
-        "tx gamm"
-        f"create-pool {pool_file_location}.json"
-        f"--from {senderId}"
-        f"--broadcast-mode block"
-        f"--chain-id {testnet.chain_id}"
-        f"--node {rpc_addr}"
+        f"{testnet.binary} "
+        "tx gamm "
+        "create-pool "
+        f"--pool-file {pool_conf_json_file} "
+        f"--from {senderId} "
+        "--broadcast-mode block "
+        "-y "
+        "--keyring-backend test "
+        f"--home {home_dir} "
+        f"--chain-id {testnet.chain_id} "
+        f"--node {rpc_addr} "
+        "--output json "
     ).split()
-    proc = subprocess.run(args, check=True, capture_output=True)
+    proc = subprocess.run(args, capture_output=True)
 
     # subscribe to event or check the result of broadcasting the tx
     # event = TmEventSubscribe({"tm.event":"Tx"})._subscribe("AND pool-create.pool-id"):
 
-    chain_pool_Id = 0
-    result = None
-    if proc.stdout:
-        result = json.loads(proc.stdout.decode())
+    if proc.returncode:
+        logging.info(f"\tCLI Error: {proc.stderr}")
+    else:
+        result = None
+        if proc.stdout:
+            result = munch.munchify(json.loads(proc.stdout.decode()))
 
-    if result is None:
-        logging.info("\tNo response!!")
-    elif result["code"] == 0:
-        logging.info(f"\tPosted: {munch.unmunchify(action_taken.action_type)}")
+        if result is None:
+            logging.info("\tNo response!!")
+        elif result.code == 0:
+            logging.info(f"\tPosted: {munch.unmunchify(action_taken.action_type)}")
 
-        for event in result.logs[0].events:
-            if event.type == "create_pool":
-                assert event.attributes[0].key == "pool_id"
-                chain_pool_Id = event.attributes[0].value
-                break
-
+            for event in result.logs[0].events:
+                if event.type == "pool_created":
+                    assert event.attributes[0].key == "pool_id"
+                    state["chain_pool_id"] = event.attributes[0].value
+                    break
             else:
                 raise RuntimeError("Did not find pool_id of the created pool")
-    else:
-        code = result["code"]
-        msg = result["raw_log"]
-        logging.info(f"\tFailure: (Code {code}) {msg}")
+        else:
+            code = result.code
+            msg = result.raw_log
+            logging.info(f"\tFailure: (Code {code}) {msg}")
 
-    if proc.stderr:
-        logging.info(f"\tstderr: {proc.stderr.decode()}")
+    args = (
+        f"{testnet.binary} "
+        "q gamm "
+        f"pool {state['pool_id']} "
+        f"--home {home_dir} "
+        f"--chain-id {testnet.chain_id} "
+        f"--node {rpc_addr} "
+        "--output json "
+    ).split()
+    logging.info("\tCurrent LP: %s", subprocess.check_output(args).decode())
 
 
 @step("join pool")
-def join_pool(testnet: Testnet, state: Dict, action_taken):
+def join_pool(testnet: Testnet, state: Dict, action_taken, home_dir: Path):
     """
     Implements the effects of the step `join pool`
     on blockchain `testnet` and state `state`.
@@ -209,10 +225,84 @@ def join_pool(testnet: Testnet, state: Dict, action_taken):
     # TODO: replace the logging stub with the effects of the action `join pool`
     logging.info("Step: join pool")
     # Tx Msg: osmosisd tx gamm join-pool --pool-id --max-amounts-in --share-amount-out --from --chain-id
+    # osmosisd tx gamm join-swap-extern-amount-in [token-in] [share-out-min-amount]
+    logging.info(action_taken)
+
+    # create transaction and send it to nodes rpc port
+    rpc_addr = testnet.get_validator_port(0, "rpc")
+
+    args = (
+        f"{testnet.binary} "
+        "q gamm "
+        f"pool {state['pool_id']} "
+        f"--home {home_dir} "
+        f"--chain-id {testnet.chain_id} "
+        f"--node {rpc_addr} "
+        "--output json "
+    ).split()
+
+    lp_data = json.loads(subprocess.check_output(args).decode())
+
+    action_share = action_taken.shares
+
+    current_share = int(lp_data["pool"]["total_shares"]["amount"])
+    current_pool_assets = {
+        e["token"]["denom"]: int(e["token"]["amount"])
+        for e in lp_data["pool"]["pool_assets"]
+    }
+
+    max_amounts_in = ""
+    for k, v in current_pool_assets.items():
+        max_amounts_in += f"--max-amounts-in {v * action_share / current_share}{k} "
+
+    args = (
+        f"{testnet.binary} "
+        "tx gamm "
+        "join-pool "
+        f"{max_amounts_in} "
+        f"--share-amount-out {action_share} "
+        f"--pool-id {state['pool_id']} "
+        f"--from {action_taken.sender} "
+        "--broadcast-mode block "
+        "-y "
+        "--keyring-backend test "
+        f"--home {home_dir} "
+        f"--chain-id {testnet.chain_id} "
+        f"--node {rpc_addr} "
+        "--output json "
+    ).split()
+    proc = subprocess.run(args, capture_output=True)
+
+    if proc.returncode:
+        logging.info(f"\tCLI Error: {proc.stderr}")
+    else:
+        result = None
+        if proc.stdout:
+            result = munch.munchify(json.loads(proc.stdout.decode()))
+
+        if result is None:
+            logging.info("\tNo response!!")
+        elif result.code == 0:
+            logging.info("\tSuccess")
+        else:
+            code = result.code
+            msg = result.raw_log
+            logging.info(f"\tFailure: (Code {code}) {msg}")
+
+    args = (
+        f"{testnet.binary} "
+        "q gamm "
+        f"pool {state['pool_id']} "
+        f"--home {home_dir} "
+        f"--chain-id {testnet.chain_id} "
+        f"--node {rpc_addr} "
+        "--output json "
+    ).split()
+    logging.info("\tCurrent LP: %s", subprocess.check_output(args).decode())
 
 
 @step("exit pool")
-def exit_pool(testnet: Testnet, state: Dict, action_taken):
+def exit_pool(testnet: Testnet, state: Dict, action_taken, home_dir: Path):
     """
     Implements the effects of the step `exit pool`
     on blockchain `testnet` and state `state`.
@@ -222,3 +312,77 @@ def exit_pool(testnet: Testnet, state: Dict, action_taken):
     # TODO: replace the logging stub with the effects of the action `exit pool`
     logging.info("Step: exit pool")
     # Tx Msg:
+    # osmosisd tx gamm exit-swap-extern-amount-out [token-out] [share-in-max-amount] [flags]
+    logging.info(action_taken)
+
+    # create transaction and send it to nodes rpc port
+    rpc_addr = testnet.get_validator_port(0, "rpc")
+
+    args = (
+        f"{testnet.binary} "
+        "q gamm "
+        f"pool {state['pool_id']} "
+        f"--home {home_dir} "
+        f"--chain-id {testnet.chain_id} "
+        f"--node {rpc_addr} "
+        "--output json "
+    ).split()
+
+    lp_data = json.loads(subprocess.check_output(args).decode())
+
+    action_share = action_taken.shares
+
+    current_share = int(lp_data["pool"]["total_shares"]["amount"])
+    current_pool_assets = {
+        e["token"]["denom"]: int(e["token"]["amount"])
+        for e in lp_data["pool"]["pool_assets"]
+    }
+
+    min_amounts_out = ""
+    for k, v in current_pool_assets.items():
+        min_amounts_out += f"--min-amounts-out {v * action_share / current_share}{k} "
+
+    args = (
+        f"{testnet.binary} "
+        "tx gamm "
+        "exit-pool "
+        f"{min_amounts_out} "
+        f"--share-amount-in {action_share} "
+        f"--pool-id {state['pool_id']} "
+        f"--from {action_taken.sender} "
+        "--broadcast-mode block "
+        "-y "
+        "--keyring-backend test "
+        f"--home {home_dir} "
+        f"--chain-id {testnet.chain_id} "
+        f"--node {rpc_addr} "
+        "--output json "
+    ).split()
+    proc = subprocess.run(args, capture_output=True)
+
+    if proc.returncode:
+        logging.info(f"\tCLI Error: {proc.stderr}")
+    else:
+        result = None
+        if proc.stdout:
+            result = munch.munchify(json.loads(proc.stdout.decode()))
+
+        if result is None:
+            logging.info("\tNo response!!")
+        elif result.code == 0:
+            logging.info("\tSuccess")
+        else:
+            code = result.code
+            msg = result.raw_log
+            logging.info(f"\tFailure: (Code {code}) {msg}")
+
+    args = (
+        f"{testnet.binary} "
+        "q gamm "
+        f"pool {state['pool_id']} "
+        f"--home {home_dir} "
+        f"--chain-id {testnet.chain_id} "
+        f"--node {rpc_addr} "
+        "--output json "
+    ).split()
+    logging.info("\tCurrent LP: %s", subprocess.check_output(args).decode())
