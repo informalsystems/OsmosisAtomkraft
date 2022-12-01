@@ -22,7 +22,7 @@ import random
 import string
 import subprocess
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 import munch
 import pytest
@@ -59,7 +59,7 @@ def state():
     return {}
 
 
-def get_current_lp(testnet: Testnet, pool_id: int, home_dir: Path):
+def get_current_lp(testnet: Testnet, pool_id: int, home_dir: Path) -> Optional[Dict]:
     rpc_addr = testnet.get_validator_port(0, "rpc")
     args = (
         f"{testnet.binary} "
@@ -70,17 +70,24 @@ def get_current_lp(testnet: Testnet, pool_id: int, home_dir: Path):
         f"--node {rpc_addr} "
         "--output json "
     ).split()
-    return json.loads(subprocess.check_output(args).decode())
+    proc = subprocess.run(args, capture_output=True, check=False)
+
+    if proc.returncode:
+        logging.info("Pool query error: %s", proc.stderr.decode())
+        return None
+
+    return json.loads(proc.stdout.decode())
 
 
-def log_current_lp(testnet: Testnet, pool_id: int, home_dir: Path):
+def log_current_lp(testnet: Testnet, pool_id: int, home_dir: Path) -> None:
     lp_data = munch.munchify(get_current_lp(testnet, pool_id, home_dir))
-    logging.info("\tCurrent LP:")
-    logging.info("\t\tDenom: %s", lp_data.pool.total_shares.denom)
-    logging.info("\t\tShare: %s", lp_data.pool.total_shares.amount)
-    logging.info("\t\t\tAssets:")
-    for e in lp_data.pool.pool_assets:
-        logging.info("\t\t\t\t%s%s", e.token.amount, e.token.denom)
+    if lp_data:
+        logging.info("\tCurrent LP:")
+        logging.info("\t\tDenom: %s", lp_data.pool.total_shares.denom)
+        logging.info("\t\tShare: %s", lp_data.pool.total_shares.amount)
+        logging.info("\t\t\tAssets:")
+        for e in lp_data.pool.pool_assets:
+            logging.info("\t\t\t\t%s%s", e.token.amount, e.token.denom)
 
 
 @step("")
@@ -173,6 +180,7 @@ def create_pool(
         json.dump(pool_config, outfile, indent=4)
 
     logging.info(munch.unmunchify(action_taken))
+    logging.info(munch.unmunchify(pool_assets))
 
     # action = action_taken.action_type
     # we need to remember poolId -> created pool Id on chain, due to test asertions
@@ -250,53 +258,54 @@ def join_pool(testnet: Testnet, state: Dict, action_taken, home_dir: Path):
 
     lp_data = get_current_lp(testnet, state["pool_id"], home_dir)
 
-    action_share = action_taken.shares
+    if lp_data:
+        action_share = action_taken.shares
 
-    current_share = int(lp_data["pool"]["total_shares"]["amount"])
-    current_pool_assets = {
-        e["token"]["denom"]: int(e["token"]["amount"])
-        for e in lp_data["pool"]["pool_assets"]
-    }
+        current_share = int(lp_data["pool"]["total_shares"]["amount"])
+        current_pool_assets = {
+            e["token"]["denom"]: int(e["token"]["amount"])
+            for e in lp_data["pool"]["pool_assets"]
+        }
 
-    max_amounts_in = ""
-    for k, v in current_pool_assets.items():
-        max_amounts_in += f"--max-amounts-in {v * action_share / current_share}{k} "
+        max_amounts_in = ""
+        for k, v in current_pool_assets.items():
+            max_amounts_in += f"--max-amounts-in {v * action_share / current_share}{k} "
 
-    args = (
-        f"{testnet.binary} "
-        "tx gamm "
-        "join-pool "
-        f"{max_amounts_in} "
-        f"--share-amount-out {action_share} "
-        f"--pool-id {state['pool_id']} "
-        f"--from {action_taken.sender} "
-        "--broadcast-mode block "
-        "-y "
-        "--keyring-backend test "
-        f"--home {home_dir} "
-        f"--chain-id {testnet.chain_id} "
-        f"--node {rpc_addr} "
-        "--output json "
-    ).split()
-    proc = subprocess.run(args, capture_output=True)
+        args = (
+            f"{testnet.binary} "
+            "tx gamm "
+            "join-pool "
+            f"{max_amounts_in} "
+            f"--share-amount-out {action_share} "
+            f"--pool-id {state['pool_id']} "
+            f"--from {action_taken.sender} "
+            "--broadcast-mode block "
+            "-y "
+            "--keyring-backend test "
+            f"--home {home_dir} "
+            f"--chain-id {testnet.chain_id} "
+            f"--node {rpc_addr} "
+            "--output json "
+        ).split()
+        proc = subprocess.run(args, capture_output=True)
 
-    if proc.returncode:
-        logging.info(f"\tCLI Error: {proc.stderr}")
-    else:
-        result = None
-        if proc.stdout:
-            result = munch.munchify(json.loads(proc.stdout.decode()))
-
-        if result is None:
-            logging.info("\tNo response!!")
-        elif result.code == 0:
-            logging.info("\tSuccess")
+        if proc.returncode:
+            logging.info(f"\tCLI Error: {proc.stderr}")
         else:
-            code = result.code
-            msg = result.raw_log
-            logging.info(f"\tFailure: (Code {code}) {msg}")
+            result = None
+            if proc.stdout:
+                result = munch.munchify(json.loads(proc.stdout.decode()))
 
-    log_current_lp(testnet, state["pool_id"], home_dir)
+            if result is None:
+                logging.info("\tNo response!!")
+            elif result.code == 0:
+                logging.info("\tSuccess")
+            else:
+                code = result.code
+                msg = result.raw_log
+                logging.info(f"\tFailure: (Code {code}) {msg}")
+
+        log_current_lp(testnet, state["pool_id"], home_dir)
 
 
 @step("exit pool")
@@ -318,50 +327,53 @@ def exit_pool(testnet: Testnet, state: Dict, action_taken, home_dir: Path):
 
     lp_data = get_current_lp(testnet, state["pool_id"], home_dir)
 
-    action_share = action_taken.shares
+    if lp_data:
+        action_share = action_taken.shares
 
-    current_share = int(lp_data["pool"]["total_shares"]["amount"])
-    current_pool_assets = {
-        e["token"]["denom"]: int(e["token"]["amount"])
-        for e in lp_data["pool"]["pool_assets"]
-    }
+        current_share = int(lp_data["pool"]["total_shares"]["amount"])
+        current_pool_assets = {
+            e["token"]["denom"]: int(e["token"]["amount"])
+            for e in lp_data["pool"]["pool_assets"]
+        }
 
-    min_amounts_out = ""
-    for k, v in current_pool_assets.items():
-        min_amounts_out += f"--min-amounts-out {v * action_share / current_share}{k} "
+        min_amounts_out = ""
+        for k, v in current_pool_assets.items():
+            min_amounts_out += (
+                f"--min-amounts-out {v * action_share / current_share}{k} "
+            )
 
-    args = (
-        f"{testnet.binary} "
-        "tx gamm "
-        "exit-pool "
-        f"{min_amounts_out} "
-        f"--share-amount-in {action_share} "
-        f"--pool-id {state['pool_id']} "
-        f"--from {action_taken.sender} "
-        "--broadcast-mode block "
-        "-y "
-        "--keyring-backend test "
-        f"--home {home_dir} "
-        f"--chain-id {testnet.chain_id} "
-        f"--node {rpc_addr} "
-        "--output json "
-    ).split()
-    proc = subprocess.run(args, capture_output=True)
+        args = (
+            f"{testnet.binary} "
+            "tx gamm "
+            "exit-pool "
+            f"{min_amounts_out} "
+            f"--share-amount-in {action_share} "
+            f"--pool-id {state['pool_id']} "
+            f"--from {action_taken.sender} "
+            "--broadcast-mode block "
+            "-y "
+            "--keyring-backend test "
+            f"--home {home_dir} "
+            f"--chain-id {testnet.chain_id} "
+            f"--node {rpc_addr} "
+            "--output json "
+        ).split()
+        proc = subprocess.run(args, capture_output=True)
 
-    if proc.returncode:
-        logging.info(f"\tCLI Error: {proc.stderr}")
-    else:
-        result = None
-        if proc.stdout:
-            result = munch.munchify(json.loads(proc.stdout.decode()))
-
-        if result is None:
-            logging.info("\tNo response!!")
-        elif result.code == 0:
-            logging.info("\tSuccess")
+        if proc.returncode:
+            logging.info(f"\tCLI Error: {proc.stderr}")
         else:
-            code = result.code
-            msg = result.raw_log
-            logging.info(f"\tFailure: (Code {code}) {msg}")
+            result = None
+            if proc.stdout:
+                result = munch.munchify(json.loads(proc.stdout.decode()))
 
-    log_current_lp(testnet, state["pool_id"], home_dir)
+            if result is None:
+                logging.info("\tNo response!!")
+            elif result.code == 0:
+                logging.info("\tSuccess")
+            else:
+                code = result.code
+                msg = result.raw_log
+                logging.info(f"\tFailure: (Code {code}) {msg}")
+
+        log_current_lp(testnet, state["pool_id"], home_dir)
