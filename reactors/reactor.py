@@ -83,7 +83,7 @@ def log_current_lp(testnet: Testnet, pool_id: int, home_dir: Path):
         logging.info("\t\t\t\t%s%s", e.token.amount, e.token.denom)
 
 
-@step("empty")
+@step("")
 def init(testnet: Testnet, state: Dict, home_dir: Path):
     """
     Implements the effects of the step `init`

@@ -18,7 +18,7 @@
         "index": 0
       },
       "action_taken": {
-        "action_type": "empty",
+        "action_type": "",
         "poolId": 0,
         "sender": "",
         "shares": 0
