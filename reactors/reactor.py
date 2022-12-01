@@ -213,7 +213,7 @@ def create_pool(
     # event = TmEventSubscribe({"tm.event":"Tx"})._subscribe("AND pool-create.pool-id"):
 
     if proc.returncode:
-        logging.info(f"\tCLI Error: {proc.stderr}")
+        logging.info(f"\tCLI Error: {proc.stderr.decode()}")
     else:
         result = None
         if proc.stdout:
@@ -290,7 +290,7 @@ def join_pool(testnet: Testnet, state: Dict, action_taken, home_dir: Path):
         proc = subprocess.run(args, capture_output=True)
 
         if proc.returncode:
-            logging.info(f"\tCLI Error: {proc.stderr}")
+            logging.info(f"\tCLI Error: {proc.stderr.decode()}")
         else:
             result = None
             if proc.stdout:
@@ -361,7 +361,7 @@ def exit_pool(testnet: Testnet, state: Dict, action_taken, home_dir: Path):
         proc = subprocess.run(args, capture_output=True)
 
         if proc.returncode:
-            logging.info(f"\tCLI Error: {proc.stderr}")
+            logging.info(f"\tCLI Error: {proc.stderr.decode()}")
         else:
             result = None
             if proc.stdout:
