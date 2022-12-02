@@ -113,6 +113,8 @@ UpdatePoolHandler(sender, pool_id, share) ==
     IN
     \* pre-condition: can not exit pool with negative share
     /\ new_pool.share >= 0
+    \* pre-condition: can not exit pool with more than available lp shares
+    /\ \A d \in DOMAIN new_lp_balance: new_lp_balance[d] >= 0
     \* pre-condition: can not join pool with more than available amounts
     /\ \A d \in DOMAIN new_balance: new_balance[d] >= 0
     \* ignore-zero: action should change the pool token supply
