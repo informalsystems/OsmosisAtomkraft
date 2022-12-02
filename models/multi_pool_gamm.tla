@@ -67,11 +67,12 @@ UpdatePoolShare(pool, share) ==
     abs_ratio == pool.share \div Abs(share)
     ratio == IF share < 0 THEN -abs_ratio ELSE abs_ratio
     update_amount == [d \in DOMAIN pool.amounts |-> pool.amounts[d] \div ratio]
+    share_delta == pool.share \div ratio \* for precision consistency
     IN
     [
         pool
         EXCEPT
-        !.share = @ + share,
+        !.share = @ + share_delta,
         !.amounts = MergeMap(@, update_amount)
     ]
 
