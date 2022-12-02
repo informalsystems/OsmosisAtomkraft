@@ -75,7 +75,8 @@ UpdatePoolShare(pool, share) ==
         LET
         ratio == SignDiv(pool.share, share)
         update_amount == [d \in DOMAIN pool.amounts |-> SignDiv(pool.amounts[d], ratio)]
-        share_delta == SignDiv(pool.share, ratio) \* for precision consistency
+        \* `share` with precision consistency
+        share_delta == SignDiv(pool.share, ratio)
         IN
         [
             pool
@@ -110,11 +111,14 @@ UpdatePoolHandler(sender, pool_id, share) ==
     old_lp_balance == lp_bank[sender]
     new_lp_balance == MergeMap(old_lp_balance, lp_tokens)
     IN
-    /\ new_pool.share /= old_pool.share \* action should change the pool token supply
-    /\ \A d \in DOMAIN new_pool.amounts: new_pool.amounts[d] /= old_pool.amounts[d] \* action should change the pool asset amounts
-    /\ new_pool.share >= 0 \* invariant
-    /\ \A d \in DOMAIN new_balance: new_balance[d] >= 0 \* invariant
-    /\ \A d \in DOMAIN new_lp_balance: new_lp_balance[d] >= 0 \* invariant
+    \* pre-condition: can not exit pool with negative share
+    /\ new_pool.share >= 0
+    \* pre-condition: can not join pool with more than available amounts
+    /\ \A d \in DOMAIN new_balance: new_balance[d] >= 0
+    \* ignore-zero: action should change the pool token supply
+    /\ new_pool.share /= old_pool.share
+    \* ignore-low-precision: action should change the pool asset amounts
+    /\ \A d \in DOMAIN new_pool.amounts: new_pool.amounts[d] /= old_pool.amounts[d]
     /\ pools' = [pools EXCEPT ![pool_id] = new_pool]
     /\ bank' = [bank EXCEPT ![sender] = new_balance]
     /\ lp_bank' = [lp_bank EXCEPT ![sender] = new_lp_balance]
@@ -143,8 +147,8 @@ CreatePoolHandler(sender, amounts, weights) ==
     old_lp_balance == lp_bank[sender]
     new_lp_balance == MergeMap(old_lp_balance, lp_tokens)
     IN
-    /\ \A d \in DOMAIN new_balance: new_balance[d] >= 0 \* invariant
-    /\ \A d \in DOMAIN new_lp_balance: new_lp_balance[d] >= 0 \* invariant
+    \* pre-condition: can not create pool with more than available amounts
+    /\ \A d \in DOMAIN new_balance: new_balance[d] >= 0
     /\ pools' = Append(pools, new_pool)
     /\ bank' = [bank EXCEPT ![sender] = new_balance]
     /\ lp_bank' = [lp_bank EXCEPT ![sender] = new_lp_balance]
