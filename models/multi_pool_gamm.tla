@@ -69,11 +69,22 @@ MergeMap(map1, map2) ==
 \* @type: Int => Int;
 Abs(x) == IF x < 0 THEN -x ELSE x
 
+\* Example:
+\* RoundDiv(10, 2) = 5
+\* RoundDiv(10, 3) = 3
+\* RoundDiv(10, 4) = 3
+\* @type: (Int, Int) => Int;
+RoundDiv(x, y) ==
+    LET
+    q == x \div y
+    r == x % y
+    IN
+    q + IF (2*r) < y THEN 0 ELSE 1
 
 \* @type: (Int, Int) => Int;
 SignDiv(sign_x, sign_y) ==
     LET
-    q == Abs(sign_x) \div Abs(sign_y)
+    q == RoundDiv(Abs(sign_x), Abs(sign_y))
     pos_x == sign_x > 0
     pos_y == sign_y > 0
     IN
