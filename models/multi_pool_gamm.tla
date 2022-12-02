@@ -72,10 +72,12 @@ Abs(x) == IF x < 0 THEN -x ELSE x
 
 \* @type: (Int, Int) => Int;
 SignDiv(sign_x, sign_y) ==
-    IF (sign_x < 0 /\ sign_y < 0) \/ (sign_x > 0 /\ sign_y > 0) THEN
-        (Abs(sign_x) \div Abs(sign_y))
-    ELSE
-        -(Abs(sign_x) \div Abs(sign_y))
+    LET
+    q == Abs(sign_x) \div Abs(sign_y)
+    pos_x == sign_x > 0
+    pos_y == sign_y > 0
+    IN
+    IF pos_x = pos_y THEN q ELSE -q
 
 
 \* @type: ($pool, Int) => $pool;
