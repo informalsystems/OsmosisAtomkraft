@@ -3,7 +3,7 @@
 \* Osmosis GAMM model using multiple pools and multiple denoms
 \* Autho: Rano
 
-EXTENDS Apalache, Integers, Sequences, FiniteSets, Variants
+EXTENDS Apalache, Integers, Sequences, FiniteSets, Variants, SequencesExt
 
 (*
     @typeAlias: denom = Str;
@@ -23,6 +23,12 @@ EXTENDS Apalache, Integers, Sequences, FiniteSets, Variants
         JoinPool({sender: Str, id: Int, share: Int}) |
         ExitPool({sender: Str, id: Int, share: Int}) |
         Genesis(Str -> $denom -> Int);
+
+    @typeAlias: outcome =
+        CreatePool({denom: $lpDenom}) |
+        JoinPool({real_share: Int}) |
+        ExitPool({real_share: Int}) |
+        Genesis(Int);
 *)
 typedefs == TRUE
 
@@ -36,7 +42,10 @@ VARIABLES
     lp_bank,
 
     \* @type: $action;
-    action
+    action,
+
+    \* @type: $outcome;
+    outcome
 
 
 USERS == {"A", "B", "C"}
@@ -165,6 +174,7 @@ CreatePoolNext(sender) ==
         /\ \A d \in lp_denoms: amounts[d] > 0 /\ weights[d] > 0
         /\ CreatePoolHandler(sender, amounts, weights)
         /\ action' = Variant("CreatePool", [sender |-> sender, amounts |-> amounts, weights |-> weights])
+        /\ outcome' = Variant("CreatePool", [denom |-> Last(pools').denom])
 
 
 \* @type: Str => Bool;
@@ -174,8 +184,10 @@ UpdatePoolNext(sender) ==
         /\ share > 0
         /\ \/ /\ UpdatePoolHandler(sender, pool_id, share)
               /\ action' = Variant("JoinPool", [sender |-> sender, id |-> pool_id, share |-> share])
+              /\ outcome' = Variant("JoinPool", [real_share |-> Abs(pools'[pool_id].share - pools[pool_id].share)])
            \/ /\ UpdatePoolHandler(sender, pool_id, -share)
               /\ action' = Variant("ExitPool", [sender |-> sender, id |-> pool_id, share |-> share])
+              /\ outcome' = Variant("ExitPool", [real_share |-> Abs(pools'[pool_id].share - pools[pool_id].share)])
 
 
 Init ==
@@ -185,6 +197,7 @@ Init ==
         /\ bank \in [USERS -> [DENOMS -> {init_balance}]]
         /\ lp_bank = [u \in USERS |-> SetAsFun({})]
         /\ action = Variant("Genesis", bank)
+        /\ outcome = Variant("Genesis", 0)
 
 
 Next ==
