@@ -262,4 +262,13 @@ PositiveDenomAmounts ==
         /\ \A pool_id \in DOMAIN pools: GetOr(pools[pool_id].amounts, denom, 0) >= 0
         /\ \A user \in DOMAIN bank: GetOr(bank[user], denom, 0) >= 0
 
+
+\* test
+ExpectedAndRealShareMismatch ==
+    IF VariantTag(action) = "JoinPool" THEN
+        VariantGetUnsafe("JoinPool", action).share = VariantGetUnsafe("JoinPool", outcome).real_share
+    ELSE IF VariantTag(action) = "ExitPool" THEN
+        VariantGetUnsafe("ExitPool", action).share = VariantGetUnsafe("ExitPool", outcome).real_share
+    ELSE TRUE
+
 ====
