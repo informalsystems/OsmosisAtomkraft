@@ -61,13 +61,17 @@ MergeMap(map1, map2) ==
 Abs(x) == IF x < 0 THEN -x ELSE x
 
 
+\* @type: (Int, Int) => Int;
+SignDiv(x, signed_y) ==
+    IF signed_y < 0 THEN -(x \div (-signed_y)) ELSE (x \div signed_y)
+
+
 \* @type: ($pool, Int) => $pool;
 UpdatePoolShare(pool, share) ==
     LET
-    abs_ratio == pool.share \div Abs(share)
-    ratio == IF share < 0 THEN -abs_ratio ELSE abs_ratio
-    update_amount == [d \in DOMAIN pool.amounts |-> pool.amounts[d] \div ratio]
-    share_delta == pool.share \div ratio \* for precision consistency
+    ratio == SignDiv(pool.share, share)
+    update_amount == [d \in DOMAIN pool.amounts |-> SignDiv(pool.amounts[d], ratio)]
+    share_delta == SignDiv(pool.share, ratio) \* for precision consistency
     IN
     [
         pool
