@@ -95,6 +95,7 @@ UpdatePoolHandler(sender, pool_id, share) ==
     /\ \A d \in DOMAIN new_pool.amounts: new_pool.amounts[d] /= old_pool.amounts[d] \* action should change the pool asset amounts
     /\ new_pool.share >= 0 \* invariant
     /\ \A d \in DOMAIN new_balance: new_balance[d] >= 0 \* invariant
+    /\ \A d \in DOMAIN new_lp_balance: new_lp_balance[d] >= 0 \* invariant
     /\ pools' = [pools EXCEPT ![pool_id] = new_pool]
     /\ bank' = [bank EXCEPT ![sender] = new_balance]
     /\ lp_bank' = [lp_bank EXCEPT ![sender] = new_lp_balance]
@@ -124,6 +125,7 @@ CreatePoolHandler(sender, amounts, weights) ==
     new_lp_balance == MergeMap(old_lp_balance, lp_tokens)
     IN
     /\ \A d \in DOMAIN new_balance: new_balance[d] >= 0 \* invariant
+    /\ \A d \in DOMAIN new_lp_balance: new_lp_balance[d] >= 0 \* invariant
     /\ pools' = Append(pools, new_pool)
     /\ bank' = [bank EXCEPT ![sender] = new_balance]
     /\ lp_bank' = [lp_bank EXCEPT ![sender] = new_lp_balance]
