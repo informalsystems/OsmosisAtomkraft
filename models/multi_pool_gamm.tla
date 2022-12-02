@@ -192,4 +192,48 @@ Next ==
         \/ CreatePoolNext(sender)
         \/ UpdatePoolNext(sender)
 
+
+\* `apalache check` success for length 3
+\* invariant
+ConstantDenomSupply ==
+    \A denom \in DENOMS:
+        LET
+        OldPoolAdd(sum, pool_id) == sum + GetOr(pools[pool_id].amounts, denom, 0)
+        OldBankAdd(sum, user) == sum + GetOr(bank[user], denom, 0)
+        NewPoolAdd(sum, pool_id) == sum + GetOr(pools'[pool_id].amounts, denom, 0)
+        NewBankAdd(sum, user) == sum + GetOr(bank'[user], denom, 0)
+        old_pool_amount == ApaFoldSet(OldPoolAdd, 0, DOMAIN pools)
+        old_bank_amount == ApaFoldSet(OldBankAdd, 0, DOMAIN bank)
+        new_pool_amount == ApaFoldSet(NewPoolAdd, 0, DOMAIN pools')
+        new_bank_amount == ApaFoldSet(NewBankAdd, 0, DOMAIN bank')
+        IN
+        old_pool_amount + old_bank_amount = new_pool_amount + new_bank_amount
+
+
+\* `apalache check` success for length 3
+\* invariant
+ConsistentLPTokenSupply ==
+    \A pool_id \in DOMAIN pools:
+        LET
+        LPBankAdd(sum, user) == sum + GetOr(lp_bank[user], pool_id, 0)
+        lp_bank_amount == ApaFoldSet(LPBankAdd, 0, DOMAIN lp_bank)
+        IN
+        pools[pool_id].share = lp_bank_amount
+
+
+\* `apalache check` success for length 3
+\* invariant
+PositiveLPAmounts ==
+    \A pool_id \in DOMAIN pools:
+        /\ \A user \in DOMAIN lp_bank: GetOr(lp_bank[user], pool_id, 0) >= 0
+        /\ pools[pool_id].share >= 0
+
+
+\* `apalache check` success for length 3
+\* invariant
+PositiveDenomAmounts ==
+    \A denom \in DENOMS:
+        /\ \A pool_id \in DOMAIN pools: GetOr(pools[pool_id].amounts, denom, 0) >= 0
+        /\ \A user \in DOMAIN bank: GetOr(bank[user], denom, 0) >= 0
+
 ====
