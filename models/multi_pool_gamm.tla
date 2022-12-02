@@ -68,17 +68,30 @@ SignDiv(x, signed_y) ==
 
 \* @type: ($pool, Int) => $pool;
 UpdatePoolShare(pool, share) ==
-    LET
-    ratio == SignDiv(pool.share, share)
-    update_amount == [d \in DOMAIN pool.amounts |-> SignDiv(pool.amounts[d], ratio)]
-    share_delta == SignDiv(pool.share, ratio) \* for precision consistency
-    IN
-    [
-        pool
-        EXCEPT
-        !.share = @ + share_delta,
-        !.amounts = MergeMap(@, update_amount)
-    ]
+    IF pool.share > Abs(share) THEN
+        LET
+        ratio == SignDiv(pool.share, share)
+        update_amount == [d \in DOMAIN pool.amounts |-> SignDiv(pool.amounts[d], ratio)]
+        share_delta == SignDiv(pool.share, ratio) \* for precision consistency
+        IN
+        [
+            pool
+            EXCEPT
+            !.share = @ + share_delta,
+            !.amounts = MergeMap(@, update_amount)
+        ]
+    ELSE
+        LET
+        ratio == SignDiv(share, pool.share)
+        update_amount == [d \in DOMAIN pool.amounts |-> pool.amounts[d] * ratio]
+        share_delta == pool.share * ratio
+        IN
+        [
+            pool
+            EXCEPT
+            !.share = @ + share_delta,
+            !.amounts = MergeMap(@, update_amount)
+        ]
 
 
 \* if share > 0, join pool
@@ -94,7 +107,6 @@ UpdatePoolHandler(sender, pool_id, share) ==
     old_lp_balance == lp_bank[sender]
     new_lp_balance == MergeMap(old_lp_balance, lp_tokens)
     IN
-    /\ Abs(share) < old_pool.share \* todo: allow bigger share
     /\ new_pool.share /= old_pool.share \* action should change the pool token supply
     /\ \A d \in DOMAIN new_pool.amounts: new_pool.amounts[d] /= old_pool.amounts[d] \* action should change the pool asset amounts
     /\ new_pool.share >= 0 \* invariant
