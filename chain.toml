@@ -21,5 +21,8 @@ voting_params = { voting_period = "600s" }
 [config_genesis.app_state.mint]
 # minter = { inflation = "0.3" }
 
+[config_genesis.app_state.gamm.params]
+pool_creation_fee = []
+
 [config_node.config.consensus]
 timeout_commit = "100ms"
