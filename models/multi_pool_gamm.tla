@@ -26,8 +26,8 @@ EXTENDS Apalache, Integers, Sequences, FiniteSets, Variants, SequencesExt
 
     @typeAlias: outcome =
         CreatePool({denom: $lpDenom}) |
-        JoinPool({real_share: Int}) |
-        ExitPool({real_share: Int}) |
+        JoinPool({real_share: Int, amounts: $denom -> Int}) |
+        ExitPool({real_share: Int, amounts: $denom -> Int}) |
         Genesis(Int);
 *)
 typedefs == TRUE
@@ -133,7 +133,9 @@ UpdatePoolHandler(sender, pool_id, share) ==
     old_lp_balance == lp_bank[sender]
     new_lp_balance == MergeMap(old_lp_balance, lp_tokens)
     IN
-    \* pre-condition: can not exit pool with negative share
+    \* pre-condition: can not exit pool with negative share (without precision)
+    /\ pools[pool_id].share + share >= 0
+    \* pre-condition: can not exit pool with negative share (with precision)
     /\ new_pool.share >= 0
     \* pre-condition: can not exit pool with more than available lp shares
     /\ \A d \in DOMAIN new_lp_balance: new_lp_balance[d] >= 0
@@ -197,10 +199,18 @@ UpdatePoolNext(sender) ==
         /\ share > 0
         /\ \/ /\ UpdatePoolHandler(sender, pool_id, share)
               /\ action' = Variant("JoinPool", [sender |-> sender, id |-> pool_id, share |-> share])
-              /\ outcome' = Variant("JoinPool", [real_share |-> Abs(pools'[pool_id].share - pools[pool_id].share)])
+              /\ outcome' = Variant("JoinPool",
+                    [
+                        real_share |-> Abs(pools'[pool_id].share - pools[pool_id].share),
+                        amounts |-> [d \in DOMAIN pools[pool_id].amounts |-> Abs(pools'[pool_id].amounts[d] - pools[pool_id].amounts[d])]
+                    ])
            \/ /\ UpdatePoolHandler(sender, pool_id, -share)
               /\ action' = Variant("ExitPool", [sender |-> sender, id |-> pool_id, share |-> share])
-              /\ outcome' = Variant("ExitPool", [real_share |-> Abs(pools'[pool_id].share - pools[pool_id].share)])
+              /\ outcome' = Variant("ExitPool",
+                    [
+                        real_share |-> Abs(pools'[pool_id].share - pools[pool_id].share),
+                        amounts |-> [d \in DOMAIN pools[pool_id].amounts |-> Abs(pools'[pool_id].amounts[d] - pools[pool_id].amounts[d])]
+                    ])
 
 
 Init ==
