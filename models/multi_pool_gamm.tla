@@ -3,16 +3,17 @@
 \* Osmosis GAMM model using multiple pools and multiple denoms
 \* Autho: Rano
 
-EXTENDS Apalache, Integers, Sequences, FiniteSets, Variants, SequencesExt
+EXTENDS Apalache, Integers, Sequences, FiniteSets, Variants
 
 (*
     @typeAlias: denom = Str;
-    @typeAlias: lpDenom = Int;
+    @typeAlias: lpId = Int;
+    @typeAlias: decimal = <<Bool, Int, Int>>;
 
     @typeAlias: pool = {
+        id: $lpId,
         swap_fee: Int,
         exit_fee: Int,
-        denom: $lpDenom,
         share: Int,
         amounts: $denom -> Int,
         weights: $denom -> Int
@@ -25,10 +26,19 @@ EXTENDS Apalache, Integers, Sequences, FiniteSets, Variants, SequencesExt
         Genesis(Str -> $denom -> Int);
 
     @typeAlias: outcome =
-        CreatePool({denom: $lpDenom}) |
-        JoinPool({real_share: Int, amounts: $denom -> Int}) |
-        ExitPool({real_share: Int, amounts: $denom -> Int}) |
+        CreatePool({id: $lpId}) |
+        UpdatePool({deltas: $denom -> Int}) |
         Genesis(Int);
+
+    @typeAlias: state = {
+        pools: Seq($pool),
+        bank: Str -> $denom -> Int,
+        lp_bank: Str -> $lpId-> Int,
+        action: $action,
+        outcome: $outcome
+    };
+
+    @typeAlias: trace = Seq($state);
 *)
 typedefs == TRUE
 
@@ -38,7 +48,7 @@ VARIABLES
     pools,
     \* @type: Str -> $denom -> Int;
     bank,
-    \* @type: Str -> $lpDenom -> Int;
+    \* @type: Str -> $lpId-> Int;
     lp_bank,
 
     \* @type: $action;
@@ -88,58 +98,21 @@ MergeMap(map1, map2) ==
     ]
 
 
-\* @type: Int => Int;
-Abs(x) == IF x < 0 THEN -x ELSE x
-
-\* Example:
-\* RoundDiv(10, 2) = 5
-\* RoundDiv(10, 3) = 3
-\* RoundDiv(10, 4) = 3
-\* @type: (Int, Int) => Int;
-RoundDiv(x, y) ==
-    LET
-    q == x \div y
-    r == x % y
-    IN
-    q + IF (2*r) < y THEN 0 ELSE 1
-
-\* @type: (Int, Int) => Int;
-SignDiv(sign_x, sign_y) ==
-    LET
-    q == RoundDiv(Abs(sign_x), Abs(sign_y))
-    pos_x == sign_x > 0
-    pos_y == sign_y > 0
-    IN
-    IF pos_x = pos_y THEN q ELSE -q
-
-
 \* @type: ($pool, Int) => $pool;
-UpdatePoolShare(pool, share) ==
-    IF pool.share > Abs(share) THEN
-        LET
-        ratio == SignDiv(pool.share, share)
-        update_amount == [d \in DOMAIN pool.amounts |-> SignDiv(pool.amounts[d], ratio)]
-        \* `share` with precision consistency
-        share_delta == SignDiv(pool.share, ratio)
-        IN
-        [
-            pool
-            EXCEPT
-            !.share = @ + share_delta,
-            !.amounts = MergeMap(@, update_amount)
-        ]
-    ELSE
-        LET
-        ratio == SignDiv(share, pool.share)
-        update_amount == [d \in DOMAIN pool.amounts |-> pool.amounts[d] * ratio]
-        share_delta == pool.share * ratio
-        IN
-        [
-            pool
-            EXCEPT
-            !.share = @ + share_delta,
-            !.amounts = MergeMap(@, update_amount)
-        ]
+UpdatePoolShare(pool, user_share) ==
+    LET
+    user_share_dec == ToDec(user_share)
+    pool_share_dec == ToDec(pool.share)
+    \* pool_share should never be zero
+    ratio_dec == Div(user_share_dec, pool_share_dec)
+    update_amount == [d \in DOMAIN pool.amounts |-> Ceil(Mult(ToDec(pool.amounts[d]), ratio_dec))]
+    IN
+    [
+        pool
+        EXCEPT
+        !.share = @ + user_share,
+        !.amounts = MergeMap(@, update_amount)
+    ]
 
 
 \* if share > 0, join pool
@@ -149,16 +122,16 @@ UpdatePoolHandler(sender, pool_id, share) ==
     LET
     old_pool == pools[pool_id]
     new_pool == UpdatePoolShare(old_pool, share)
-    lp_tokens == SetAsFun({<<old_pool.denom, new_pool.share - old_pool.share>>})
     old_balance == bank[sender]
     new_balance == MergeMap(old_balance, [d \in DOMAIN old_pool.amounts |-> old_pool.amounts[d] - new_pool.amounts[d]])
     old_lp_balance == lp_bank[sender]
-    new_lp_balance == MergeMap(old_lp_balance, lp_tokens)
+    new_lp_balance == MergeMap(old_lp_balance, SetAsFun({<<old_pool.id, new_pool.share - old_pool.share>>}))
     IN
-    \* pre-condition: can not exit pool with negative share (without precision)
-    /\ pools[pool_id].share + share >= 0
-    \* pre-condition: can not exit pool with negative share (with precision)
-    /\ new_pool.share >= 0
+    \* pre-condition: can not exit pool with negative share
+    \* potential problem when share is zero.
+    \* what happens, when pool share is empty and the amounts are empty.
+    \* how is ratio is calculated? how to keep track of ratio when share is zero?
+    /\ new_pool.share > 0
     \* pre-condition: can not exit pool with more than available lp shares
     /\ \A d \in DOMAIN new_lp_balance: new_lp_balance[d] >= 0
     \* pre-condition: can not join pool with more than available amounts
@@ -172,12 +145,12 @@ UpdatePoolHandler(sender, pool_id, share) ==
     /\ lp_bank' = [lp_bank EXCEPT ![sender] = new_lp_balance]
 
 
-\* @type: (Int, $denom -> Int, $denom -> Int) => $pool;
+\* @type: ($lpId, $denom -> Int, $denom -> Int) => $pool;
 NewPool(id, amounts, weights) ==
     [
+        id |-> id,
         swap_fee |-> 0,
         exit_fee |-> 0,
-        denom |-> id,
         share |-> 100 * ONE,
         amounts |-> amounts,
         weights |-> weights
@@ -189,11 +162,10 @@ CreatePoolHandler(sender, amounts, weights) ==
     LET
     next_pool_id == Len(pools) + 1
     new_pool == NewPool(next_pool_id, amounts, weights)
-    lp_tokens == SetAsFun({<<new_pool.denom, new_pool.share>>})
     old_balance == bank[sender]
     new_balance == MergeMap(old_balance, [d \in DOMAIN amounts |-> -amounts[d]])
     old_lp_balance == lp_bank[sender]
-    new_lp_balance == MergeMap(old_lp_balance, lp_tokens)
+    new_lp_balance == MergeMap(old_lp_balance, SetAsFun({<<new_pool.id, new_pool.share>>}))
     IN
     \* pre-condition: can not create pool with more than available amounts
     /\ \A d \in DOMAIN new_balance: new_balance[d] >= 0
@@ -204,14 +176,14 @@ CreatePoolHandler(sender, amounts, weights) ==
 
 \* @type: Str => Bool;
 CreatePoolNext(sender) ==
-    \E lp_denoms \in SUBSET DOMAIN bank[sender]:
-    \E amounts \in [lp_denoms -> Nat]:
-    \E weights \in [lp_denoms -> Nat]:
-        /\ Cardinality(lp_denoms) > 1
-        /\ \A d \in lp_denoms: amounts[d] > 0 /\ weights[d] > 0
+    \E lpIds \in SUBSET DOMAIN bank[sender]:
+    \E amounts \in [lpIds -> Nat]:
+    \E weights \in [lpIds -> Nat]:
+        /\ Cardinality(lpIds) > 1
+        /\ \A d \in lpIds: amounts[d] > 0 /\ weights[d] > 0
         /\ CreatePoolHandler(sender, amounts, weights)
         /\ action' = Variant("CreatePool", [sender |-> sender, amounts |-> amounts, weights |-> weights])
-        /\ outcome' = Variant("CreatePool", [denom |-> Last(pools').denom])
+        /\ outcome' = Variant("CreatePool", [id |-> pools'[Len(pools')].id])
 
 
 \* @type: Str => Bool;
@@ -221,18 +193,11 @@ UpdatePoolNext(sender) ==
         /\ share > 0
         /\ \/ /\ UpdatePoolHandler(sender, pool_id, share)
               /\ action' = Variant("JoinPool", [sender |-> sender, id |-> pool_id, share |-> share])
-              /\ outcome' = Variant("JoinPool",
-                    [
-                        real_share |-> Abs(pools'[pool_id].share - pools[pool_id].share),
-                        amounts |-> [d \in DOMAIN pools[pool_id].amounts |-> Abs(pools'[pool_id].amounts[d] - pools[pool_id].amounts[d])]
-                    ])
            \/ /\ UpdatePoolHandler(sender, pool_id, -share)
               /\ action' = Variant("ExitPool", [sender |-> sender, id |-> pool_id, share |-> share])
-              /\ outcome' = Variant("ExitPool",
-                    [
-                        real_share |-> Abs(pools'[pool_id].share - pools[pool_id].share),
-                        amounts |-> [d \in DOMAIN pools[pool_id].amounts |-> Abs(pools'[pool_id].amounts[d] - pools[pool_id].amounts[d])]
-                    ])
+        /\ outcome' = Variant("UpdatePool", [
+                deltas |-> [d \in DOMAIN pools[pool_id].amounts |-> pools'[pool_id].amounts[d] - pools[pool_id].amounts[d]]
+            ])
 
 
 Init ==
@@ -251,7 +216,6 @@ Next ==
         \/ UpdatePoolNext(sender)
 
 
-\* `apalache check` success for length 3
 \* invariant
 ConstantDenomSupply ==
     \A denom \in DENOMS:
@@ -268,7 +232,6 @@ ConstantDenomSupply ==
         old_pool_amount + old_bank_amount = new_pool_amount + new_bank_amount
 
 
-\* `apalache check` success for length 3
 \* invariant
 ConsistentLPTokenSupply ==
     \A pool_id \in DOMAIN pools:
@@ -279,7 +242,6 @@ ConsistentLPTokenSupply ==
         pools[pool_id].share = lp_bank_amount
 
 
-\* `apalache check` success for length 3
 \* invariant
 PositiveLPAmounts ==
     \A pool_id \in DOMAIN pools:
@@ -287,7 +249,6 @@ PositiveLPAmounts ==
         /\ pools[pool_id].share >= 0
 
 
-\* `apalache check` success for length 3
 \* invariant
 PositiveDenomAmounts ==
     \A denom \in DENOMS:
@@ -295,12 +256,24 @@ PositiveDenomAmounts ==
         /\ \A user \in DOMAIN bank: GetOr(bank[user], denom, 0) >= 0
 
 
-\* test
-ExpectedAndRealShareMismatch ==
-    IF VariantTag(action) = "JoinPool" THEN
-        VariantGetUnsafe("JoinPool", action).share = VariantGetUnsafe("JoinPool", outcome).real_share
-    ELSE IF VariantTag(action) = "ExitPool" THEN
-        VariantGetUnsafe("ExitPool", action).share = VariantGetUnsafe("ExitPool", outcome).real_share
-    ELSE TRUE
+\* invariant
+\* @type: ($trace) => Bool;
+SameJoinExitShareNetPositiveDeltas(trace) ==
+    \A i, j \in DOMAIN trace:
+        LET
+        si == trace[i]
+        sj == trace[j]
+        action_i == VariantGetUnsafe("JoinPool", si.action)
+        action_j == VariantGetUnsafe("ExitPool", sj.action)
+        outcome_i == VariantGetUnsafe("UpdatePool", si.outcome)
+        outcome_j == VariantGetUnsafe("UpdatePool", sj.outcome)
+        IN
+        (
+            /\ i /= j
+            /\ VariantTag(si.action) = "JoinPool"
+            /\ VariantTag(sj.action) = "ExitPool"
+            /\ action_i.id = action_j.id
+            /\ action_i.share = action_j.share
+        ) => \A k \in DOMAIN outcome_i.deltas: outcome_i.deltas[k] + outcome_j.deltas[k] >= 0
 
 ====
