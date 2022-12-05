@@ -110,9 +110,7 @@ def init(testnet: Testnet, home_dir: Path, action):
 
 
 @step("CreatePool")
-def create_pool(
-    testnet: Testnet, home_dir: Path, action, outcome, pools
-):
+def create_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
     """
     Implements the effects of the step `create pool`
     on blockchain `testnet` and state `state`.
@@ -140,7 +138,9 @@ def create_pool(
 
     pool_config = {
         "weights": ",".join(f"{a}{d}" for (d, a) in action.value.weights.items()),
-        "initial-deposit": ",".join(f"{a}{d}" for (d, a) in action.value.amounts.items()),
+        "initial-deposit": ",".join(
+            f"{a}{d}" for (d, a) in action.value.amounts.items()
+        ),
         "swap-fee": "0.00",
         "exit-fee": "0.00",
         "future-governor": "",
@@ -196,18 +196,16 @@ def create_pool(
             for event in result.logs[0].events:
                 if event.type == "pool_created":
                     assert event.attributes[0].key == "pool_id"
-                    assert int(event.attributes[0].value) == outcome.value.denom
+                    assert int(event.attributes[0].value) == outcome.value.id
                     break
             else:
                 raise RuntimeError("Did not find pool_id of the created pool")
-            log_current_lp(testnet, outcome.value.denom, home_dir)
-            logging.info(munch.unmunchify(pools[outcome.value.denom-1]))
+            log_current_lp(testnet, outcome.value.id, home_dir)
+            logging.info(munch.unmunchify(pools[outcome.value.id - 1]))
         else:
             code = result.code
             msg = result.raw_log
             logging.info(f"\tFailure: (Code {code}) {msg}")
-
-    
 
 
 @step("JoinPool")
@@ -231,7 +229,9 @@ def join_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
     lp_data = get_current_lp(testnet, action.value.id, home_dir)
 
     if lp_data:
-        amounts = " ".join(f"--max-amounts-in {a}{d}" for (d, a) in outcome.value.amounts.items())
+        amounts = " ".join(
+            f"--max-amounts-in {a}{d}" for (d, a) in outcome.value.deltas.items()
+        )
 
         args = (
             f"{testnet.binary} "
@@ -263,12 +263,11 @@ def join_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
             elif result.code == 0:
                 logging.info("\tSuccess")
                 log_current_lp(testnet, action.value.id, home_dir)
-                logging.info(munch.unmunchify(pools[action.value.id-1]))
+                logging.info(munch.unmunchify(pools[action.value.id - 1]))
             else:
                 code = result.code
                 msg = result.raw_log
                 logging.info(f"\tFailure: (Code {code}) {msg}")
-
 
 
 @step("ExitPool")
@@ -292,7 +291,10 @@ def exit_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
     lp_data = get_current_lp(testnet, action.value.id, home_dir)
 
     if lp_data:
-        amounts = " ".join(f"--min-amounts-out {a}{d}" for (d, a) in outcome.value.amounts.items())
+        # deltas are negative for exit pool
+        amounts = " ".join(
+            f"--min-amounts-out {abs(a)}{d}" for (d, a) in outcome.value.deltas.items()
+        )
 
         args = (
             f"{testnet.binary} "
@@ -324,9 +326,8 @@ def exit_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
             elif result.code == 0:
                 logging.info("\tSuccess")
                 log_current_lp(testnet, action.value.id, home_dir)
-                logging.info(munch.unmunchify(pools[action.value.id-1]))
+                logging.info(munch.unmunchify(pools[action.value.id - 1]))
             else:
                 code = result.code
                 msg = result.raw_log
                 logging.info(f"\tFailure: (Code {code}) {msg}")
-
