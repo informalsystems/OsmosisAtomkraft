@@ -165,9 +165,9 @@ Ceil(x) ==
     THEN x  \* propagate the panic
     ELSE
         LET value ==
-            IF x.value % PRECISION = 0 \/ x.value < 0
+            IF x.value % ONE = 0 \/ x.value < 0
             THEN x.value
-            ELSE ((x.value \div PRECISION) + 1) * PRECISION
+            ELSE ((x.value \div ONE) + 1) * ONE
         IN
         [ error |-> FALSE, value |-> value ]
 
@@ -184,6 +184,6 @@ RoundInt(x) ==
  *
  * @type: $dec => Int;
  *)
-TruncateInt(x) == x.value \div PRECISION
+TruncateInt(x) == x.value \div ONE
 
 ================================================================================
