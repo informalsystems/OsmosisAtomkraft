@@ -2,14 +2,14 @@
   "#meta": {
     "format": "ITF",
     "format-description": "https://apalache.informal.systems/docs/adr/015adr-trace.html",
-    "description": "Created by Apalache on Sat Dec 03 22:08:14 CET 2022"
+    "description": "Created by Apalache on Mon Dec 05 03:36:15 CET 2022"
   },
   "vars": [
-    "pools",
-    "outcome",
-    "bank",
     "action",
-    "lp_bank"
+    "outcome",
+    "lp_bank",
+    "pools",
+    "bank"
   ],
   "states": [
     {
@@ -26,15 +26,15 @@
                 "#map": [
                   [
                     "uosmo",
-                    21
+                    9
                   ],
                   [
                     "uatom",
-                    21
+                    9
                   ],
                   [
                     "ujuno",
-                    21
+                    9
                   ]
                 ]
               }
@@ -45,15 +45,15 @@
                 "#map": [
                   [
                     "uosmo",
-                    21
+                    9
                   ],
                   [
                     "uatom",
-                    21
+                    9
                   ],
                   [
                     "ujuno",
-                    21
+                    9
                   ]
                 ]
               }
@@ -64,15 +64,15 @@
                 "#map": [
                   [
                     "uosmo",
-                    21
+                    9
                   ],
                   [
                     "uatom",
-                    21
+                    9
                   ],
                   [
                     "ujuno",
-                    21
+                    9
                   ]
                 ]
               }
@@ -88,15 +88,15 @@
               "#map": [
                 [
                   "uosmo",
-                  21
+                  9
                 ],
                 [
                   "uatom",
-                  21
+                  9
                 ],
                 [
                   "ujuno",
-                  21
+                  9
                 ]
               ]
             }
@@ -107,15 +107,15 @@
               "#map": [
                 [
                   "uosmo",
-                  21
+                  9
                 ],
                 [
                   "uatom",
-                  21
+                  9
                 ],
                 [
                   "ujuno",
-                  21
+                  9
                 ]
               ]
             }
@@ -126,15 +126,15 @@
               "#map": [
                 [
                   "uosmo",
-                  21
+                  9
                 ],
                 [
                   "uatom",
-                  21
+                  9
                 ],
                 [
                   "ujuno",
-                  21
+                  9
                 ]
               ]
             }
@@ -188,19 +188,15 @@
             "#map": [
               [
                 "uosmo",
-                6
+                5
               ],
               [
                 "uatom",
-                8
-              ],
-              [
-                "ujuno",
-                3
+                2
               ]
             ]
           },
-          "sender": "C",
+          "sender": "B",
           "weights": {
             "#map": [
               [
@@ -209,10 +205,6 @@
               ],
               [
                 "uatom",
-                1
-              ],
-              [
-                "ujuno",
                 1
               ]
             ]
@@ -227,15 +219,15 @@
               "#map": [
                 [
                   "uosmo",
-                  21
+                  9
                 ],
                 [
                   "uatom",
-                  21
+                  9
                 ],
                 [
                   "ujuno",
-                  21
+                  9
                 ]
               ]
             }
@@ -246,15 +238,15 @@
               "#map": [
                 [
                   "uosmo",
-                  21
+                  4
                 ],
                 [
                   "uatom",
-                  21
+                  7
                 ],
                 [
                   "ujuno",
-                  21
+                  9
                 ]
               ]
             }
@@ -265,15 +257,15 @@
               "#map": [
                 [
                   "uosmo",
-                  15
+                  9
                 ],
                 [
                   "uatom",
-                  13
+                  9
                 ],
                 [
                   "ujuno",
-                  18
+                  9
                 ]
               ]
             }
@@ -294,14 +286,6 @@
             "B",
             {
               "#map": [
-                
-              ]
-            }
-          ],
-          [
-            "C",
-            {
-              "#map": [
                 [
                   1,
                   {
@@ -310,13 +294,21 @@
                 ]
               ]
             }
+          ],
+          [
+            "C",
+            {
+              "#map": [
+                
+              ]
+            }
           ]
         ]
       },
       "outcome": {
         "tag": "CreatePool",
         "value": {
-          "denom": 1
+          "id": 1
         }
       },
       "pools": [
@@ -325,20 +317,16 @@
             "#map": [
               [
                 "uosmo",
-                6
+                5
               ],
               [
                 "uatom",
-                8
-              ],
-              [
-                "ujuno",
-                3
+                2
               ]
             ]
           },
-          "denom": 1,
           "exit_fee": 0,
+          "id": 1,
           "share": {
             "#bigint": "100000000000000000000"
           },
@@ -352,10 +340,6 @@
               [
                 "uatom",
                 1
-              ],
-              [
-                "ujuno",
-                1
               ]
             ]
           }
@@ -367,12 +351,12 @@
         "index": 2
       },
       "action": {
-        "tag": "ExitPool",
+        "tag": "JoinPool",
         "value": {
           "id": 1,
-          "sender": "C",
+          "sender": "A",
           "share": {
-            "#bigint": "50000000000000000001"
+            "#bigint": "160000000000000000001"
           }
         }
       },
@@ -384,15 +368,15 @@
               "#map": [
                 [
                   "uosmo",
-                  21
+                  0
                 ],
                 [
                   "uatom",
-                  21
+                  5
                 ],
                 [
                   "ujuno",
-                  21
+                  9
                 ]
               ]
             }
@@ -403,15 +387,15 @@
               "#map": [
                 [
                   "uosmo",
-                  21
+                  4
                 ],
                 [
                   "uatom",
-                  21
+                  7
                 ],
                 [
                   "ujuno",
-                  21
+                  9
                 ]
               ]
             }
@@ -422,15 +406,15 @@
               "#map": [
                 [
                   "uosmo",
-                  18
+                  9
                 ],
                 [
                   "uatom",
-                  17
+                  9
                 ],
                 [
                   "ujuno",
-                  20
+                  9
                 ]
               ]
             }
@@ -443,7 +427,12 @@
             "A",
             {
               "#map": [
-                
+                [
+                  1,
+                  {
+                    "#bigint": "160000000000000000001"
+                  }
+                ]
               ]
             }
           ],
@@ -451,7 +440,12 @@
             "B",
             {
               "#map": [
-                
+                [
+                  1,
+                  {
+                    "#bigint": "100000000000000000000"
+                  }
+                ]
               ]
             }
           ],
@@ -459,38 +453,26 @@
             "C",
             {
               "#map": [
-                [
-                  1,
-                  {
-                    "#bigint": "50000000000000000000"
-                  }
-                ]
+                
               ]
             }
           ]
         ]
       },
       "outcome": {
-        "tag": "ExitPool",
+        "tag": "UpdatePool",
         "value": {
-          "amounts": {
+          "deltas": {
             "#map": [
               [
                 "uosmo",
-                3
+                9
               ],
               [
                 "uatom",
                 4
-              ],
-              [
-                "ujuno",
-                2
               ]
             ]
-          },
-          "real_share": {
-            "#bigint": "50000000000000000000"
           }
         }
       },
@@ -500,22 +482,18 @@
             "#map": [
               [
                 "uosmo",
-                3
+                14
               ],
               [
                 "uatom",
-                4
-              ],
-              [
-                "ujuno",
-                1
+                6
               ]
             ]
           },
-          "denom": 1,
           "exit_fee": 0,
+          "id": 1,
           "share": {
-            "#bigint": "50000000000000000000"
+            "#bigint": "260000000000000000001"
           },
           "swap_fee": 0,
           "weights": {
@@ -526,10 +504,6 @@
               ],
               [
                 "uatom",
-                1
-              ],
-              [
-                "ujuno",
                 1
               ]
             ]
@@ -545,443 +519,8 @@
         "tag": "JoinPool",
         "value": {
           "id": 1,
-          "sender": "C",
-          "share": {
-            "#bigint": "175000000000000000000"
-          }
-        }
-      },
-      "bank": {
-        "#map": [
-          [
-            "A",
-            {
-              "#map": [
-                [
-                  "uosmo",
-                  21
-                ],
-                [
-                  "uatom",
-                  21
-                ],
-                [
-                  "ujuno",
-                  21
-                ]
-              ]
-            }
-          ],
-          [
-            "B",
-            {
-              "#map": [
-                [
-                  "uosmo",
-                  21
-                ],
-                [
-                  "uatom",
-                  21
-                ],
-                [
-                  "ujuno",
-                  21
-                ]
-              ]
-            }
-          ],
-          [
-            "C",
-            {
-              "#map": [
-                [
-                  "uosmo",
-                  6
-                ],
-                [
-                  "uatom",
-                  1
-                ],
-                [
-                  "ujuno",
-                  16
-                ]
-              ]
-            }
-          ]
-        ]
-      },
-      "lp_bank": {
-        "#map": [
-          [
-            "A",
-            {
-              "#map": [
-                
-              ]
-            }
-          ],
-          [
-            "B",
-            {
-              "#map": [
-                
-              ]
-            }
-          ],
-          [
-            "C",
-            {
-              "#map": [
-                [
-                  1,
-                  {
-                    "#bigint": "250000000000000000000"
-                  }
-                ]
-              ]
-            }
-          ]
-        ]
-      },
-      "outcome": {
-        "tag": "JoinPool",
-        "value": {
-          "amounts": {
-            "#map": [
-              [
-                "uosmo",
-                12
-              ],
-              [
-                "uatom",
-                16
-              ],
-              [
-                "ujuno",
-                4
-              ]
-            ]
-          },
-          "real_share": {
-            "#bigint": "200000000000000000000"
-          }
-        }
-      },
-      "pools": [
-        {
-          "amounts": {
-            "#map": [
-              [
-                "uosmo",
-                15
-              ],
-              [
-                "uatom",
-                20
-              ],
-              [
-                "ujuno",
-                5
-              ]
-            ]
-          },
-          "denom": 1,
-          "exit_fee": 0,
-          "share": {
-            "#bigint": "250000000000000000000"
-          },
-          "swap_fee": 0,
-          "weights": {
-            "#map": [
-              [
-                "uosmo",
-                1
-              ],
-              [
-                "uatom",
-                1
-              ],
-              [
-                "ujuno",
-                1
-              ]
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "#meta": {
-        "index": 4
-      },
-      "action": {
-        "tag": "CreatePool",
-        "value": {
-          "amounts": {
-            "#map": [
-              [
-                "uosmo",
-                16
-              ],
-              [
-                "uatom",
-                21
-              ],
-              [
-                "ujuno",
-                21
-              ]
-            ]
-          },
-          "sender": "A",
-          "weights": {
-            "#map": [
-              [
-                "uosmo",
-                1
-              ],
-              [
-                "uatom",
-                1
-              ],
-              [
-                "ujuno",
-                1
-              ]
-            ]
-          }
-        }
-      },
-      "bank": {
-        "#map": [
-          [
-            "A",
-            {
-              "#map": [
-                [
-                  "uosmo",
-                  5
-                ],
-                [
-                  "uatom",
-                  0
-                ],
-                [
-                  "ujuno",
-                  0
-                ]
-              ]
-            }
-          ],
-          [
-            "B",
-            {
-              "#map": [
-                [
-                  "uosmo",
-                  21
-                ],
-                [
-                  "uatom",
-                  21
-                ],
-                [
-                  "ujuno",
-                  21
-                ]
-              ]
-            }
-          ],
-          [
-            "C",
-            {
-              "#map": [
-                [
-                  "uosmo",
-                  6
-                ],
-                [
-                  "uatom",
-                  1
-                ],
-                [
-                  "ujuno",
-                  16
-                ]
-              ]
-            }
-          ]
-        ]
-      },
-      "lp_bank": {
-        "#map": [
-          [
-            "A",
-            {
-              "#map": [
-                [
-                  2,
-                  {
-                    "#bigint": "100000000000000000000"
-                  }
-                ]
-              ]
-            }
-          ],
-          [
-            "B",
-            {
-              "#map": [
-                
-              ]
-            }
-          ],
-          [
-            "C",
-            {
-              "#map": [
-                [
-                  1,
-                  {
-                    "#bigint": "250000000000000000000"
-                  }
-                ]
-              ]
-            }
-          ]
-        ]
-      },
-      "outcome": {
-        "tag": "CreatePool",
-        "value": {
-          "denom": 2
-        }
-      },
-      "pools": [
-        {
-          "amounts": {
-            "#map": [
-              [
-                "uosmo",
-                15
-              ],
-              [
-                "uatom",
-                20
-              ],
-              [
-                "ujuno",
-                5
-              ]
-            ]
-          },
-          "denom": 1,
-          "exit_fee": 0,
-          "share": {
-            "#bigint": "250000000000000000000"
-          },
-          "swap_fee": 0,
-          "weights": {
-            "#map": [
-              [
-                "uosmo",
-                1
-              ],
-              [
-                "uatom",
-                1
-              ],
-              [
-                "ujuno",
-                1
-              ]
-            ]
-          }
-        },
-        {
-          "amounts": {
-            "#map": [
-              [
-                "uosmo",
-                16
-              ],
-              [
-                "uatom",
-                21
-              ],
-              [
-                "ujuno",
-                21
-              ]
-            ]
-          },
-          "denom": 2,
-          "exit_fee": 0,
-          "share": {
-            "#bigint": "100000000000000000000"
-          },
-          "swap_fee": 0,
-          "weights": {
-            "#map": [
-              [
-                "uosmo",
-                1
-              ],
-              [
-                "uatom",
-                1
-              ],
-              [
-                "ujuno",
-                1
-              ]
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "#meta": {
-        "index": 5
-      },
-      "action": {
-        "tag": "CreatePool",
-        "value": {
-          "amounts": {
-            "#map": [
-              [
-                "uosmo",
-                4
-              ],
-              [
-                "uatom",
-                1
-              ],
-              [
-                "ujuno",
-                1
-              ]
-            ]
-          },
           "sender": "B",
-          "weights": {
-            "#map": [
-              [
-                "uosmo",
-                1
-              ],
-              [
-                "uatom",
-                1
-              ],
-              [
-                "ujuno",
-                1
-              ]
-            ]
-          }
+          "share": 1
         }
       },
       "bank": {
@@ -992,15 +531,15 @@
               "#map": [
                 [
                   "uosmo",
-                  5
+                  0
                 ],
                 [
                   "uatom",
-                  0
+                  5
                 ],
                 [
                   "ujuno",
-                  0
+                  9
                 ]
               ]
             }
@@ -1011,15 +550,15 @@
               "#map": [
                 [
                   "uosmo",
-                  17
+                  3
                 ],
                 [
                   "uatom",
-                  20
+                  6
                 ],
                 [
                   "ujuno",
-                  20
+                  9
                 ]
               ]
             }
@@ -1030,15 +569,15 @@
               "#map": [
                 [
                   "uosmo",
-                  6
+                  9
                 ],
                 [
                   "uatom",
-                  1
+                  9
                 ],
                 [
                   "ujuno",
-                  16
+                  9
                 ]
               ]
             }
@@ -1052,9 +591,9 @@
             {
               "#map": [
                 [
-                  2,
+                  1,
                   {
-                    "#bigint": "100000000000000000000"
+                    "#bigint": "160000000000000000001"
                   }
                 ]
               ]
@@ -1065,9 +604,9 @@
             {
               "#map": [
                 [
-                  3,
+                  1,
                   {
-                    "#bigint": "100000000000000000000"
+                    "#bigint": "100000000000000000001"
                   }
                 ]
               ]
@@ -1077,21 +616,27 @@
             "C",
             {
               "#map": [
-                [
-                  1,
-                  {
-                    "#bigint": "250000000000000000000"
-                  }
-                ]
+                
               ]
             }
           ]
         ]
       },
       "outcome": {
-        "tag": "CreatePool",
+        "tag": "UpdatePool",
         "value": {
-          "denom": 3
+          "deltas": {
+            "#map": [
+              [
+                "uosmo",
+                1
+              ],
+              [
+                "uatom",
+                1
+              ]
+            ]
+          }
         }
       },
       "pools": [
@@ -1104,18 +649,14 @@
               ],
               [
                 "uatom",
-                20
-              ],
-              [
-                "ujuno",
-                5
+                7
               ]
             ]
           },
-          "denom": 1,
           "exit_fee": 0,
+          "id": 1,
           "share": {
-            "#bigint": "250000000000000000000"
+            "#bigint": "260000000000000000002"
           },
           "swap_fee": 0,
           "weights": {
@@ -1126,90 +667,6 @@
               ],
               [
                 "uatom",
-                1
-              ],
-              [
-                "ujuno",
-                1
-              ]
-            ]
-          }
-        },
-        {
-          "amounts": {
-            "#map": [
-              [
-                "uosmo",
-                16
-              ],
-              [
-                "uatom",
-                21
-              ],
-              [
-                "ujuno",
-                21
-              ]
-            ]
-          },
-          "denom": 2,
-          "exit_fee": 0,
-          "share": {
-            "#bigint": "100000000000000000000"
-          },
-          "swap_fee": 0,
-          "weights": {
-            "#map": [
-              [
-                "uosmo",
-                1
-              ],
-              [
-                "uatom",
-                1
-              ],
-              [
-                "ujuno",
-                1
-              ]
-            ]
-          }
-        },
-        {
-          "amounts": {
-            "#map": [
-              [
-                "uosmo",
-                4
-              ],
-              [
-                "uatom",
-                1
-              ],
-              [
-                "ujuno",
-                1
-              ]
-            ]
-          },
-          "denom": 3,
-          "exit_fee": 0,
-          "share": {
-            "#bigint": "100000000000000000000"
-          },
-          "swap_fee": 0,
-          "weights": {
-            "#map": [
-              [
-                "uosmo",
-                1
-              ],
-              [
-                "uatom",
-                1
-              ],
-              [
-                "ujuno",
                 1
               ]
             ]
