@@ -1,0 +1,673 @@
+{
+  "#meta": {
+    "format": "ITF",
+    "format-description": "https://apalache.informal.systems/docs/adr/015adr-trace.html",
+    "description": "Created by Apalache on Tue Dec 06 15:34:33 CET 2022"
+  },
+  "vars": [
+    "pools",
+    "outcome",
+    "bank",
+    "action",
+    "lp_bank"
+  ],
+  "states": [
+    {
+      "#meta": {
+        "index": 0
+      },
+      "action": {
+        "tag": "Genesis",
+        "value": {
+          "#map": [
+            [
+              "A",
+              {
+                "#map": [
+                  [
+                    "uosmo",
+                    4
+                  ],
+                  [
+                    "uatom",
+                    4
+                  ],
+                  [
+                    "ujuno",
+                    4
+                  ]
+                ]
+              }
+            ],
+            [
+              "B",
+              {
+                "#map": [
+                  [
+                    "uosmo",
+                    4
+                  ],
+                  [
+                    "uatom",
+                    4
+                  ],
+                  [
+                    "ujuno",
+                    4
+                  ]
+                ]
+              }
+            ],
+            [
+              "C",
+              {
+                "#map": [
+                  [
+                    "uosmo",
+                    4
+                  ],
+                  [
+                    "uatom",
+                    4
+                  ],
+                  [
+                    "ujuno",
+                    4
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      "bank": {
+        "#map": [
+          [
+            "A",
+            {
+              "#map": [
+                [
+                  "uosmo",
+                  4
+                ],
+                [
+                  "uatom",
+                  4
+                ],
+                [
+                  "ujuno",
+                  4
+                ]
+              ]
+            }
+          ],
+          [
+            "B",
+            {
+              "#map": [
+                [
+                  "uosmo",
+                  4
+                ],
+                [
+                  "uatom",
+                  4
+                ],
+                [
+                  "ujuno",
+                  4
+                ]
+              ]
+            }
+          ],
+          [
+            "C",
+            {
+              "#map": [
+                [
+                  "uosmo",
+                  4
+                ],
+                [
+                  "uatom",
+                  4
+                ],
+                [
+                  "ujuno",
+                  4
+                ]
+              ]
+            }
+          ]
+        ]
+      },
+      "lp_bank": {
+        "#map": [
+          [
+            "A",
+            {
+              "#map": [
+                
+              ]
+            }
+          ],
+          [
+            "B",
+            {
+              "#map": [
+                
+              ]
+            }
+          ],
+          [
+            "C",
+            {
+              "#map": [
+                
+              ]
+            }
+          ]
+        ]
+      },
+      "outcome": {
+        "tag": "Genesis",
+        "value": 0
+      },
+      "pools": [
+        
+      ]
+    },
+    {
+      "#meta": {
+        "index": 1
+      },
+      "action": {
+        "tag": "CreatePool",
+        "value": {
+          "amounts": {
+            "#map": [
+              [
+                "uosmo",
+                1
+              ],
+              [
+                "uatom",
+                1
+              ]
+            ]
+          },
+          "sender": "B",
+          "weights": {
+            "#map": [
+              [
+                "uosmo",
+                1
+              ],
+              [
+                "uatom",
+                1
+              ]
+            ]
+          }
+        }
+      },
+      "bank": {
+        "#map": [
+          [
+            "A",
+            {
+              "#map": [
+                [
+                  "uosmo",
+                  4
+                ],
+                [
+                  "uatom",
+                  4
+                ],
+                [
+                  "ujuno",
+                  4
+                ]
+              ]
+            }
+          ],
+          [
+            "B",
+            {
+              "#map": [
+                [
+                  "uosmo",
+                  3
+                ],
+                [
+                  "uatom",
+                  3
+                ],
+                [
+                  "ujuno",
+                  4
+                ]
+              ]
+            }
+          ],
+          [
+            "C",
+            {
+              "#map": [
+                [
+                  "uosmo",
+                  4
+                ],
+                [
+                  "uatom",
+                  4
+                ],
+                [
+                  "ujuno",
+                  4
+                ]
+              ]
+            }
+          ]
+        ]
+      },
+      "lp_bank": {
+        "#map": [
+          [
+            "A",
+            {
+              "#map": [
+                
+              ]
+            }
+          ],
+          [
+            "B",
+            {
+              "#map": [
+                [
+                  1,
+                  {
+                    "#bigint": "100000000000000000000"
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "C",
+            {
+              "#map": [
+                
+              ]
+            }
+          ]
+        ]
+      },
+      "outcome": {
+        "tag": "CreatePool",
+        "value": {
+          "id": 1
+        }
+      },
+      "pools": [
+        {
+          "amounts": {
+            "#map": [
+              [
+                "uosmo",
+                1
+              ],
+              [
+                "uatom",
+                1
+              ]
+            ]
+          },
+          "exit_fee": 0,
+          "id": 1,
+          "share": {
+            "#bigint": "100000000000000000000"
+          },
+          "swap_fee": 0,
+          "weights": {
+            "#map": [
+              [
+                "uosmo",
+                1
+              ],
+              [
+                "uatom",
+                1
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "#meta": {
+        "index": 2
+      },
+      "action": {
+        "tag": "ExitPool",
+        "value": {
+          "id": 1,
+          "sender": "B",
+          "share": 1
+        }
+      },
+      "bank": {
+        "#map": [
+          [
+            "A",
+            {
+              "#map": [
+                [
+                  "uosmo",
+                  4
+                ],
+                [
+                  "uatom",
+                  4
+                ],
+                [
+                  "ujuno",
+                  4
+                ]
+              ]
+            }
+          ],
+          [
+            "B",
+            {
+              "#map": [
+                [
+                  "uosmo",
+                  3
+                ],
+                [
+                  "uatom",
+                  3
+                ],
+                [
+                  "ujuno",
+                  4
+                ]
+              ]
+            }
+          ],
+          [
+            "C",
+            {
+              "#map": [
+                [
+                  "uosmo",
+                  4
+                ],
+                [
+                  "uatom",
+                  4
+                ],
+                [
+                  "ujuno",
+                  4
+                ]
+              ]
+            }
+          ]
+        ]
+      },
+      "lp_bank": {
+        "#map": [
+          [
+            "A",
+            {
+              "#map": [
+                
+              ]
+            }
+          ],
+          [
+            "B",
+            {
+              "#map": [
+                [
+                  1,
+                  {
+                    "#bigint": "99999999999999999999"
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "C",
+            {
+              "#map": [
+                
+              ]
+            }
+          ]
+        ]
+      },
+      "outcome": {
+        "tag": "UpdatePool",
+        "value": {
+          "deltas": {
+            "#map": [
+              [
+                "uosmo",
+                0
+              ],
+              [
+                "uatom",
+                0
+              ]
+            ]
+          }
+        }
+      },
+      "pools": [
+        {
+          "amounts": {
+            "#map": [
+              [
+                "uosmo",
+                1
+              ],
+              [
+                "uatom",
+                1
+              ]
+            ]
+          },
+          "exit_fee": 0,
+          "id": 1,
+          "share": {
+            "#bigint": "99999999999999999999"
+          },
+          "swap_fee": 0,
+          "weights": {
+            "#map": [
+              [
+                "uosmo",
+                1
+              ],
+              [
+                "uatom",
+                1
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "#meta": {
+        "index": 3
+      },
+      "action": {
+        "tag": "JoinPool",
+        "value": {
+          "id": 1,
+          "sender": "A",
+          "share": {
+            "#bigint": "199999999999999999999"
+          }
+        }
+      },
+      "bank": {
+        "#map": [
+          [
+            "A",
+            {
+              "#map": [
+                [
+                  "uosmo",
+                  1
+                ],
+                [
+                  "uatom",
+                  1
+                ],
+                [
+                  "ujuno",
+                  4
+                ]
+              ]
+            }
+          ],
+          [
+            "B",
+            {
+              "#map": [
+                [
+                  "uosmo",
+                  3
+                ],
+                [
+                  "uatom",
+                  3
+                ],
+                [
+                  "ujuno",
+                  4
+                ]
+              ]
+            }
+          ],
+          [
+            "C",
+            {
+              "#map": [
+                [
+                  "uosmo",
+                  4
+                ],
+                [
+                  "uatom",
+                  4
+                ],
+                [
+                  "ujuno",
+                  4
+                ]
+              ]
+            }
+          ]
+        ]
+      },
+      "lp_bank": {
+        "#map": [
+          [
+            "A",
+            {
+              "#map": [
+                [
+                  1,
+                  {
+                    "#bigint": "199999999999999999999"
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "B",
+            {
+              "#map": [
+                [
+                  1,
+                  {
+                    "#bigint": "99999999999999999999"
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "C",
+            {
+              "#map": [
+                
+              ]
+            }
+          ]
+        ]
+      },
+      "outcome": {
+        "tag": "UpdatePool",
+        "value": {
+          "deltas": {
+            "#map": [
+              [
+                "uosmo",
+                3
+              ],
+              [
+                "uatom",
+                3
+              ]
+            ]
+          }
+        }
+      },
+      "pools": [
+        {
+          "amounts": {
+            "#map": [
+              [
+                "uosmo",
+                4
+              ],
+              [
+                "uatom",
+                4
+              ]
+            ]
+          },
+          "exit_fee": 0,
+          "id": 1,
+          "share": {
+            "#bigint": "299999999999999999998"
+          },
+          "swap_fee": 0,
+          "weights": {
+            "#map": [
+              [
+                "uosmo",
+                1
+              ],
+              [
+                "uatom",
+                1
+              ]
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
