@@ -1,14 +1,13 @@
----- MODULE multi_pool_gamm ----
+---- MODULE test_mp_gamm ----
 
 \* Osmosis GAMM model using multiple pools and multiple denoms
 \* Autho: Rano
 
-EXTENDS Apalache, Integers, Sequences, FiniteSets, Variants
+EXTENDS Apalache, Integers, Sequences, FiniteSets, Variants, HighPrecisionDec
 
 (*
     @typeAlias: denom = Str;
     @typeAlias: lpId = Int;
-    @typeAlias: decimal = <<Bool, Int, Int>>;
 
     @typeAlias: pool = {
         id: $lpId,
@@ -63,28 +62,6 @@ DENOMS == {"uosmo", "uatom", "ujuno"}
 ONE == 10^18
 
 
-\* @type: Int => $decimal;
-ToDec(x) == <<x < 0, IF x < 0 THEN -x ELSE x, 1>>
-
-\* @type: ($decimal) => $decimal;
-Inv(a) == <<a[1], a[3], a[2]>>
-
-\* @type: ($decimal, $decimal) => $decimal;
-Mult(a, b) == <<a[1] /= b[1], a[2] * b[2], a[3] * b[3]>>
-
-\* @type: ($decimal, $decimal) => $decimal;
-Div(a, b) == Mult(a, Inv(b))
-
-\* @type: ($decimal) => Int;
-Ceil(x) ==
-    LET
-    s == (IF x[1] THEN -1 ELSE 1)
-    q == x[2] \div x[3]
-    r == x[2] % x[3]
-    IN
-    s * q + (IF (~x[1] /\ r > 0) THEN 1 ELSE 0)
-
-
 \* @type: (a -> b, a, b) => b;
 GetOr(map, key, value) ==
     IF key \in DOMAIN map THEN map[key] ELSE value
@@ -136,10 +113,6 @@ UpdatePoolHandler(sender, pool_id, share) ==
     /\ \A d \in DOMAIN new_lp_balance: new_lp_balance[d] >= 0
     \* pre-condition: can not join pool with more than available amounts
     /\ \A d \in DOMAIN new_balance: new_balance[d] >= 0
-    \* ignore-zero: action should change the pool token supply
-    /\ new_pool.share /= old_pool.share
-    \* ignore-low-precision: action should change the pool asset amounts
-    /\ \A d \in DOMAIN new_pool.amounts: new_pool.amounts[d] /= old_pool.amounts[d]
     /\ pools' = [pools EXCEPT ![pool_id] = new_pool]
     /\ bank' = [bank EXCEPT ![sender] = new_balance]
     /\ lp_bank' = [lp_bank EXCEPT ![sender] = new_lp_balance]
@@ -203,6 +176,8 @@ UpdatePoolNext(sender) ==
 Init ==
     \E init_balance \in Nat:
         /\ init_balance > 0
+        \* cosmos-sdk balance upper limit
+        /\ init_balance < 2^(256+60)
         /\ pools = <<>>
         /\ bank \in [USERS -> [DENOMS -> {init_balance}]]
         /\ lp_bank = [u \in USERS |-> SetAsFun({})]
@@ -275,5 +250,15 @@ SameJoinExitShareNetPositiveDeltas(trace) ==
             /\ action_i.id = action_j.id
             /\ action_i.share = action_j.share
         ) => \A k \in DOMAIN outcome_i.deltas: outcome_i.deltas[k] + outcome_j.deltas[k] >= 0
+
+\* @type: ($trace) => Bool;
+Cex(trace) ==
+    \A i \in DOMAIN trace:
+        LET
+        si == trace[i]
+        outcome_i == VariantGetUnsafe("UpdatePool", si.outcome)
+        IN
+        VariantTag(si.action) \in {"JoinPool", "ExitPool"}
+        => \A k \in DOMAIN outcome_i.deltas: outcome_i.deltas[k] /= 0
 
 ====
