@@ -18,11 +18,11 @@ git submodule update --init
 # Generate traces
 
 ```
-atomkraft model simulate --model-path=models/multi_pool_gamm.tla --max-trace=3 --length=5 --traces-dir=traces/multi_pool_gamm
+atomkraft model simulate --model-path=models/test_mp_gamm.tla --max-trace=3 --length=4 --traces-dir=traces/mp_gamm
 ```
 
-# Executing tests
+# Execute tests
 
 ```
-atomkraft test trace --path=traces/multi_pool_gamm --reactor=reactors/multi_pool_gamm.py --keypath=action.tag
+atomkraft test trace --path=traces/mp_gamm --reactor=reactors/mp_gamm.py --keypath=action.tag
 ```
