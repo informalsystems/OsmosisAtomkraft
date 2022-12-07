@@ -63,6 +63,36 @@ def get_current_lp(testnet: Testnet, pool_id: int, home_dir: Path) -> Optional[D
     return json.loads(proc.stdout.decode())
 
 
+def get_user_balance(testnet: Testnet, user: str, home_dir: Path) -> Optional[Dict]:
+    rpc_addr = testnet.get_validator_port(0, "rpc")
+
+    args = (
+        f"{testnet.binary} "
+        f"keys show {user} -a "
+        "--keyring-backend test "
+        f"--home {home_dir} "
+    ).split()
+
+    addr = subprocess.check_output(args).decode().strip()
+
+    args = (
+        f"{testnet.binary} "
+        f"q bank balances {addr} "
+        f"--home {home_dir} "
+        f"--chain-id {testnet.chain_id} "
+        f"--node {rpc_addr} "
+        "--output json "
+    ).split()
+
+    proc = subprocess.run(args, capture_output=True, check=False)
+
+    if proc.returncode:
+        logging.info("Bank query error: %s", proc.stderr.decode())
+        return None
+
+    return json.loads(proc.stdout.decode())["balances"]
+
+
 def log_current_lp(testnet: Testnet, pool_id: int, home_dir: Path) -> None:
     lp_data = munch.munchify(get_current_lp(testnet, pool_id, home_dir))
     if lp_data:
@@ -327,6 +357,77 @@ def exit_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
                 logging.info("\tSuccess")
                 log_current_lp(testnet, action.value.id, home_dir)
                 logging.info(munch.unmunchify(pools[action.value.id - 1]))
+            else:
+                code = result.code
+                msg = result.raw_log
+                logging.info(f"\tFailure: (Code {code}) {msg}")
+
+
+@step("SwapAmount")
+def swap_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
+    """
+    Implements the effects of the step `exit pool`
+    on blockchain `testnet` and state `state`.
+    It additionally has access to the model (trace) state variable `action`.
+    """
+
+    # TODO: replace the logging stub with the effects of the action `exit pool`
+    logging.info("Step: swap amount")
+    # Tx Msg:
+    # osmosisd tx gamm exit-swap-extern-amount-out [token-out] [share-in-max-amount] [flags]
+    logging.info(
+        "Old balance of %s: %s",
+        action.value.sender,
+        get_user_balance(testnet, action.value.sender, home_dir),
+    )
+    logging.info(munch.unmunchify(action))
+    logging.info(munch.unmunchify(outcome))
+
+    # create transaction and send it to nodes rpc port
+    rpc_addr = testnet.get_validator_port(0, "rpc")
+
+    lp_data = get_current_lp(testnet, action.value.id, home_dir)
+
+    amount_out = -outcome.value.deltas[action.value.denom_out]
+
+    if lp_data:
+        args = (
+            f"{testnet.binary} "
+            "tx gamm "
+            "swap-exact-amount-in "
+            f"{action.value.amount_in}{action.value.denom_in} "
+            f"{amount_out} "
+            f"--swap-route-pool-ids {action.value.id} "
+            f"--swap-route-denoms {action.value.denom_out} "
+            f"--from {action.value.sender} "
+            "--broadcast-mode block "
+            "-y "
+            "--keyring-backend test "
+            f"--home {home_dir} "
+            f"--chain-id {testnet.chain_id} "
+            f"--node {rpc_addr} "
+            "--output json "
+        ).split()
+        proc = subprocess.run(args, capture_output=True)
+
+        if proc.returncode:
+            logging.info(f"\tCLI Error: {proc.stderr.decode()}")
+        else:
+            result = None
+            if proc.stdout:
+                result = munch.munchify(json.loads(proc.stdout.decode()))
+
+            if result is None:
+                logging.info("\tNo response!!")
+            elif result.code == 0:
+                logging.info("\tSuccess")
+                log_current_lp(testnet, action.value.id, home_dir)
+                logging.info(munch.unmunchify(pools[action.value.id - 1]))
+                logging.info(
+                    "New balance of %s: %s",
+                    action.value.sender,
+                    get_user_balance(testnet, action.value.sender, home_dir),
+                )
             else:
                 code = result.code
                 msg = result.raw_log
