@@ -15,8 +15,14 @@ git submodule update --init
 (cd osmosis; make build)
 ```
 
-# Running a test
+# Generate traces
 
 ```
-atomkraft test trace --path traces --reactor reactors/reactor.py --keypath action_taken.action_type
+atomkraft model simulate --model-path=models/test_mp_gamm.tla --max-trace=3 --length=4 --traces-dir=traces/mp_gamm
+```
+
+# Execute tests
+
+```
+atomkraft test trace --path=traces/mp_gamm --reactor=reactors/mp_gamm.py --keypath=action.tag
 ```
