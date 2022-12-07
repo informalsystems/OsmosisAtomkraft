@@ -671,32 +671,12 @@
         "index": 4
       },
       "action": {
-        "tag": "CreatePool",
+        "tag": "ExitPool",
         "value": {
-          "amounts": {
-            "#map": [
-              [
-                "uosmo",
-                1
-              ],
-              [
-                "ujuno",
-                1
-              ]
-            ]
-          },
-          "sender": "A",
-          "weights": {
-            "#map": [
-              [
-                "uosmo",
-                1
-              ],
-              [
-                "ujuno",
-                1
-              ]
-            ]
+          "id": 1,
+          "sender": "C",
+          "share": {
+            "#bigint": "14201183431952662730"
           }
         }
       },
@@ -708,7 +688,7 @@
               "#map": [
                 [
                   "uosmo",
-                  28
+                  29
                 ],
                 [
                   "uatom",
@@ -716,7 +696,7 @@
                 ],
                 [
                   "ujuno",
-                  28
+                  29
                 ]
               ]
             }
@@ -767,12 +747,7 @@
             "A",
             {
               "#map": [
-                [
-                  2,
-                  {
-                    "#bigint": "100000000000000000000"
-                  }
-                ]
+                
               ]
             }
           ],
@@ -800,9 +775,20 @@
         ]
       },
       "outcome": {
-        "tag": "CreatePool",
+        "tag": "UpdatePool",
         "value": {
-          "id": 2
+          "deltas": {
+            "#map": [
+              [
+                "uatom",
+                -4
+              ],
+              [
+                "ujuno",
+                -1
+              ]
+            ]
+          }
         }
       },
       "pools": [
@@ -829,38 +815,6 @@
             "#map": [
               [
                 "uatom",
-                1
-              ],
-              [
-                "ujuno",
-                1
-              ]
-            ]
-          }
-        },
-        {
-          "amounts": {
-            "#map": [
-              [
-                "uosmo",
-                1
-              ],
-              [
-                "ujuno",
-                1
-              ]
-            ]
-          },
-          "exit_fee": 0,
-          "id": 2,
-          "share": {
-            "#bigint": "100000000000000000000"
-          },
-          "swap_fee": 0,
-          "weights": {
-            "#map": [
-              [
-                "uosmo",
                 1
               ],
               [
