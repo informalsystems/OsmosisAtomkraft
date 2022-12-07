@@ -20,8 +20,9 @@ EXTENDS Apalache, Integers, Sequences, FiniteSets, Variants, HighPrecisionDec
 
     @typeAlias: action =
         CreatePool({sender: Str, amounts: $denom -> Int, weights: $denom -> Int}) |
-        JoinPool({sender: Str, id: Int, share: Int}) |
-        ExitPool({sender: Str, id: Int, share: Int}) |
+        JoinPool({sender: Str, id: $lpId, share: Int}) |
+        ExitPool({sender: Str, id: $lpId, share: Int}) |
+        SwapAmount({sender: Str, id: $lpId, denom_in: $denom, amount_in: Int, denom_out: $denom}) |
         Genesis(Str -> $denom -> Int);
 
     @typeAlias: outcome =
@@ -173,11 +174,71 @@ UpdatePoolNext(sender) ==
             ])
 
 
+\* @type: ($pool, Int, $denom, $denom) => Int;
+CalcAmountOut(pool, amount_in, denom_in, denom_out) ==
+    LET
+    current_balance_in == ToDec(pool.amounts[denom_in])
+    current_balance_out == ToDec(pool.amounts[denom_out])
+    next_balance_in == ToDec(pool.amounts[denom_in] + amount_in)
+    \* https://docs.osmosis.zone/osmosis-core/modules/gamm/#swap
+    \* balance_in^weight_in * balance_out^weight_out = constant
+    \* balance_in^weight_in * balance_out^weight_out = (balance_in + amount_in)^weight_in * (balance_out - amount_out)^weight_out
+    \* (balance_out - amount_out) = balance_out * (balance_in / (balance_in + amount_in))^(weight_in / weight_out)
+    \* weight_ratio == pool.weights[denom_in] \div pool.weights[denom_out]
+    \*
+    \* TODO: Z3 doesn't support constraining exponents
+    \*
+    \* next_balance_out == Mult(current_balance_out, PowInt(Div(current_balance_in, next_balance_in), weight_ratio))
+    \* when weight_ratio is 1
+    next_balance_out == Mult(current_balance_out, Div(current_balance_in, next_balance_in))
+    IN
+    pool.amounts[denom_out] - Floor(next_balance_out)
+
+
+\* @type: (Str, $lpId, Int, $denom, $denom) => Bool;
+SwapAmountHandler(sender, pool_id, amount_in, denom_in, denom_out) ==
+    LET
+    old_pool == pools[pool_id]
+    amount_out == CalcAmountOut(old_pool, amount_in, denom_in, denom_out)
+    new_pool == [old_pool EXCEPT !.amounts = MergeMap(@, SetAsFun({<<denom_in, amount_in>>, <<denom_out, -amount_out>>}))]
+    old_balance == bank[sender]
+    new_balance == MergeMap(old_balance, SetAsFun({<<denom_in, -amount_in>>, <<denom_out, amount_out>>}))
+    IN
+    \* pre-condition: because Z3 doesn't support constraining exponents
+    \* assumes, the weight ratio is 1
+    /\ old_pool.weights[denom_in] = old_pool.weights[denom_out]
+    \* pre-condition: can not swap with more than available amounts
+    /\ \A d \in DOMAIN new_balance: new_balance[d] >= 0
+    \* pre-condition: can not swap with pool with smaller amounts
+    \* pre-condition: pool balance will always be positive
+    /\ \A d \in DOMAIN new_pool.amounts: new_pool.amounts[d] > 0
+    /\ pools' = [pools EXCEPT ![pool_id] = new_pool]
+    /\ bank' = [bank EXCEPT ![sender] = new_balance]
+    /\ UNCHANGED lp_bank
+
+
+\* @type: Str => Bool;
+SwapAmountNext(sender) ==
+    \E pool_id \in DOMAIN pools:
+    \E amount_in \in Nat:
+    \E denom_in \in DOMAIN pools[pool_id].amounts:
+    \E denom_out \in DOMAIN pools[pool_id].amounts:
+        /\ denom_in /= denom_out
+        /\ amount_in > 0
+        /\ SwapAmountHandler(sender, pool_id, amount_in, denom_in, denom_out)
+        /\ action' = Variant("SwapAmount", [
+                sender |-> sender, id |-> pool_id, denom_in |-> denom_in, amount_in |-> amount_in, denom_out |-> denom_out
+            ])
+        /\ outcome' = Variant("UpdatePool", [
+                deltas |-> [d \in DOMAIN pools[pool_id].amounts |-> pools'[pool_id].amounts[d] - pools[pool_id].amounts[d]]
+            ])
+
+
 Init ==
     \E init_balance \in Nat:
         /\ init_balance > 0
         \* cosmos-sdk balance upper limit
-        /\ init_balance < 2^(256+60)
+        /\ init_balance < 2^(256-60)
         /\ pools = <<>>
         /\ bank \in [USERS -> [DENOMS -> {init_balance}]]
         /\ lp_bank = [u \in USERS |-> SetAsFun({})]
@@ -189,6 +250,7 @@ Next ==
     \E sender \in USERS:
         \/ CreatePoolNext(sender)
         \/ UpdatePoolNext(sender)
+        \/ SwapAmountNext(sender)
 
 
 \* invariant
@@ -251,14 +313,39 @@ SameJoinExitShareNetPositiveDeltas(trace) ==
             /\ action_i.share = action_j.share
         ) => \A k \in DOMAIN outcome_i.deltas: outcome_i.deltas[k] + outcome_j.deltas[k] >= 0
 
+
+CexZeroPoolShare ==
+    \A i \in DOMAIN pools:
+        pools[i].share > 0
+
+
 \* @type: ($trace) => Bool;
-Cex(trace) ==
+CexZeroAssetIn(trace) ==
     \A i \in DOMAIN trace:
         LET
         si == trace[i]
         outcome_i == VariantGetUnsafe("UpdatePool", si.outcome)
         IN
-        VariantTag(si.action) \in {"JoinPool", "ExitPool"}
+        VariantTag(si.action) = "JoinPool"
         => \A k \in DOMAIN outcome_i.deltas: outcome_i.deltas[k] /= 0
+
+
+\* @type: ($trace) => Bool;
+CexZeroAssetOut(trace) ==
+    \A i \in DOMAIN trace:
+        LET
+        si == trace[i]
+        outcome_i == VariantGetUnsafe("UpdatePool", si.outcome)
+        IN
+        VariantTag(si.action) = "ExitPool"
+        => \A k \in DOMAIN outcome_i.deltas: outcome_i.deltas[k] /= 0
+
+
+\* @type: ($trace) => Bool;
+CexCreateJoinExit(trace) ==
+    {"Genesis", "CreatePool", "JoinPool", "ExitPool"} /= {VariantTag(trace[i].action): i \in DOMAIN trace}
+
+View ==
+    VariantTag(action)
 
 ====
