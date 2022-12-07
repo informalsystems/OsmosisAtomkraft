@@ -134,6 +134,14 @@ Traces: `traces/scenarios/scenario9.itf.json`
 
 ---
 
+Scenario: Swap using a pool
+
+Outcome: Pass
+
+Traces: `traces/scenarios/scenario12.itf.json`
+
+---
+
 Scenario: Create, join and exit pools with more than two denominations. (Info: ValidateBasic will reject creation of pools with more than 8 denominations)
 
 Outcome:
