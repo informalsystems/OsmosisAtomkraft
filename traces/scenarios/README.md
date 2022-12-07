@@ -107,6 +107,21 @@ Outcome:
 (Code 7) failed to execute message; message index: 0: Exit pool returned 4uatom,1ujuno , minimum tokens out specified as 4uatom,2ujuno: calculated amount is lesser than min amount
 ```
 
+Explanation:
+
+```
+Pool status:
+Share: 92307692307692307745
+Assets: 27uatom, 13ujuno
+
+Exit pool:
+Out share: 14201183431952662730
+Atomkraft calculated out assets: 4uatom,2ujuno
+Osmosisd calculated out assets: 4uatom,1ujuno
+
+Osmosisd calculated wrong because 2 = 13 (juno amount in pool) * 14201183431952662730 (out share) / 92307692307692307745 (current share)
+```
+
 Traces: `traces/scenarios/scenario8.itf.json`
 
 ---
