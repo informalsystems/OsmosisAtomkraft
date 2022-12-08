@@ -2,7 +2,7 @@
   "#meta": {
     "format": "ITF",
     "format-description": "https://apalache.informal.systems/docs/adr/015adr-trace.html",
-    "description": "Created by Apalache on Thu Dec 08 00:35:29 CET 2022"
+    "description": "Created by Apalache on Thu Dec 08 12:34:24 CET 2022"
   },
   "vars": [
     "pools",
@@ -26,15 +26,15 @@
                 "#map": [
                   [
                     "uosmo",
-                    2
+                    5
                   ],
                   [
                     "uatom",
-                    2
+                    5
                   ],
                   [
                     "ujuno",
-                    2
+                    5
                   ]
                 ]
               }
@@ -45,15 +45,15 @@
                 "#map": [
                   [
                     "uosmo",
-                    2
+                    5
                   ],
                   [
                     "uatom",
-                    2
+                    5
                   ],
                   [
                     "ujuno",
-                    2
+                    5
                   ]
                 ]
               }
@@ -64,15 +64,15 @@
                 "#map": [
                   [
                     "uosmo",
-                    2
+                    5
                   ],
                   [
                     "uatom",
-                    2
+                    5
                   ],
                   [
                     "ujuno",
-                    2
+                    5
                   ]
                 ]
               }
@@ -88,15 +88,15 @@
               "#map": [
                 [
                   "uosmo",
-                  2
+                  5
                 ],
                 [
                   "uatom",
-                  2
+                  5
                 ],
                 [
                   "ujuno",
-                  2
+                  5
                 ]
               ]
             }
@@ -107,15 +107,15 @@
               "#map": [
                 [
                   "uosmo",
-                  2
+                  5
                 ],
                 [
                   "uatom",
-                  2
+                  5
                 ],
                 [
                   "ujuno",
-                  2
+                  5
                 ]
               ]
             }
@@ -126,15 +126,15 @@
               "#map": [
                 [
                   "uosmo",
-                  2
+                  5
                 ],
                 [
                   "uatom",
-                  2
+                  5
                 ],
                 [
                   "ujuno",
-                  2
+                  5
                 ]
               ]
             }
@@ -188,15 +188,15 @@
             "#map": [
               [
                 "uatom",
-                2
+                4
               ],
               [
                 "ujuno",
-                2
+                4
               ]
             ]
           },
-          "sender": "A",
+          "sender": "B",
           "weights": {
             "#map": [
               [
@@ -219,15 +219,15 @@
               "#map": [
                 [
                   "uosmo",
-                  2
+                  5
                 ],
                 [
                   "uatom",
-                  0
+                  5
                 ],
                 [
                   "ujuno",
-                  0
+                  5
                 ]
               ]
             }
@@ -238,15 +238,15 @@
               "#map": [
                 [
                   "uosmo",
-                  2
+                  5
                 ],
                 [
                   "uatom",
-                  2
+                  1
                 ],
                 [
                   "ujuno",
-                  2
+                  1
                 ]
               ]
             }
@@ -257,15 +257,15 @@
               "#map": [
                 [
                   "uosmo",
-                  2
+                  5
                 ],
                 [
                   "uatom",
-                  2
+                  5
                 ],
                 [
                   "ujuno",
-                  2
+                  5
                 ]
               ]
             }
@@ -278,12 +278,7 @@
             "A",
             {
               "#map": [
-                [
-                  1,
-                  {
-                    "#bigint": "100000000000000000000"
-                  }
-                ]
+                
               ]
             }
           ],
@@ -291,7 +286,12 @@
             "B",
             {
               "#map": [
-                
+                [
+                  1,
+                  {
+                    "#bigint": "100000000000000000000"
+                  }
+                ]
               ]
             }
           ],
@@ -317,11 +317,11 @@
             "#map": [
               [
                 "uatom",
-                2
+                4
               ],
               [
                 "ujuno",
-                2
+                4
               ]
             ]
           },
@@ -351,32 +351,12 @@
         "index": 2
       },
       "action": {
-        "tag": "CreatePool",
+        "tag": "ExitPool",
         "value": {
-          "amounts": {
-            "#map": [
-              [
-                "uosmo",
-                2
-              ],
-              [
-                "uatom",
-                2
-              ]
-            ]
-          },
-          "sender": "C",
-          "weights": {
-            "#map": [
-              [
-                "uosmo",
-                1
-              ],
-              [
-                "uatom",
-                1
-              ]
-            ]
+          "id": 1,
+          "sender": "B",
+          "share": {
+            "#bigint": "50000000000000000000"
           }
         }
       },
@@ -388,15 +368,15 @@
               "#map": [
                 [
                   "uosmo",
-                  2
+                  5
                 ],
                 [
                   "uatom",
-                  0
+                  5
                 ],
                 [
                   "ujuno",
-                  0
+                  5
                 ]
               ]
             }
@@ -407,15 +387,15 @@
               "#map": [
                 [
                   "uosmo",
-                  2
+                  5
                 ],
                 [
                   "uatom",
-                  2
+                  3
                 ],
                 [
                   "ujuno",
-                  2
+                  3
                 ]
               ]
             }
@@ -426,15 +406,15 @@
               "#map": [
                 [
                   "uosmo",
-                  0
+                  5
                 ],
                 [
                   "uatom",
-                  0
+                  5
                 ],
                 [
                   "ujuno",
-                  2
+                  5
                 ]
               ]
             }
@@ -447,12 +427,7 @@
             "A",
             {
               "#map": [
-                [
-                  1,
-                  {
-                    "#bigint": "100000000000000000000"
-                  }
-                ]
+                
               ]
             }
           ],
@@ -460,7 +435,12 @@
             "B",
             {
               "#map": [
-                
+                [
+                  1,
+                  {
+                    "#bigint": "50000000000000000000"
+                  }
+                ]
               ]
             }
           ],
@@ -468,21 +448,27 @@
             "C",
             {
               "#map": [
-                [
-                  2,
-                  {
-                    "#bigint": "100000000000000000000"
-                  }
-                ]
+                
               ]
             }
           ]
         ]
       },
       "outcome": {
-        "tag": "CreatePool",
+        "tag": "UpdatePool",
         "value": {
-          "id": 2
+          "deltas": {
+            "#map": [
+              [
+                "uatom",
+                -2
+              ],
+              [
+                "ujuno",
+                -2
+              ]
+            ]
+          }
         }
       },
       "pools": [
@@ -502,7 +488,7 @@
           "exit_fee": 0,
           "id": 1,
           "share": {
-            "#bigint": "100000000000000000000"
+            "#bigint": "50000000000000000000"
           },
           "swap_fee": 0,
           "weights": {
@@ -513,38 +499,6 @@
               ],
               [
                 "ujuno",
-                1
-              ]
-            ]
-          }
-        },
-        {
-          "amounts": {
-            "#map": [
-              [
-                "uosmo",
-                2
-              ],
-              [
-                "uatom",
-                2
-              ]
-            ]
-          },
-          "exit_fee": 0,
-          "id": 2,
-          "share": {
-            "#bigint": "100000000000000000000"
-          },
-          "swap_fee": 0,
-          "weights": {
-            "#map": [
-              [
-                "uosmo",
-                1
-              ],
-              [
-                "uatom",
                 1
               ]
             ]
@@ -560,10 +514,10 @@
         "tag": "SwapInAmount",
         "value": {
           "amount_in": 2,
-          "denom_in": "uosmo",
+          "denom_in": "ujuno",
           "denom_out": "uatom",
-          "id": 2,
-          "sender": "A"
+          "id": 1,
+          "sender": "C"
         }
       },
       "bank": {
@@ -573,16 +527,16 @@
             {
               "#map": [
                 [
+                  "uosmo",
+                  5
+                ],
+                [
                   "uatom",
-                  1
+                  5
                 ],
                 [
                   "ujuno",
-                  0
-                ],
-                [
-                  "uosmo",
-                  0
+                  5
                 ]
               ]
             }
@@ -593,15 +547,15 @@
               "#map": [
                 [
                   "uosmo",
-                  2
+                  5
                 ],
                 [
                   "uatom",
-                  2
+                  3
                 ],
                 [
                   "ujuno",
-                  2
+                  3
                 ]
               ]
             }
@@ -611,16 +565,16 @@
             {
               "#map": [
                 [
+                  "ujuno",
+                  3
+                ],
+                [
                   "uosmo",
-                  0
+                  5
                 ],
                 [
                   "uatom",
-                  0
-                ],
-                [
-                  "ujuno",
-                  2
+                  6
                 ]
               ]
             }
@@ -633,12 +587,7 @@
             "A",
             {
               "#map": [
-                [
-                  1,
-                  {
-                    "#bigint": "100000000000000000000"
-                  }
-                ]
+                
               ]
             }
           ],
@@ -646,7 +595,12 @@
             "B",
             {
               "#map": [
-                
+                [
+                  1,
+                  {
+                    "#bigint": "50000000000000000000"
+                  }
+                ]
               ]
             }
           ],
@@ -654,12 +608,7 @@
             "C",
             {
               "#map": [
-                [
-                  2,
-                  {
-                    "#bigint": "100000000000000000000"
-                  }
-                ]
+                
               ]
             }
           ]
@@ -671,12 +620,170 @@
           "deltas": {
             "#map": [
               [
-                "uosmo",
+                "uatom",
+                -1
+              ],
+              [
+                "ujuno",
                 2
+              ]
+            ]
+          }
+        }
+      },
+      "pools": [
+        {
+          "amounts": {
+            "#map": [
+              [
+                "ujuno",
+                4
               ],
               [
                 "uatom",
-                -1
+                1
+              ]
+            ]
+          },
+          "exit_fee": 0,
+          "id": 1,
+          "share": {
+            "#bigint": "50000000000000000000"
+          },
+          "swap_fee": 0,
+          "weights": {
+            "#map": [
+              [
+                "uatom",
+                1
+              ],
+              [
+                "ujuno",
+                1
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "#meta": {
+        "index": 4
+      },
+      "action": {
+        "tag": "ExitPool",
+        "value": {
+          "id": 1,
+          "sender": "B",
+          "share": 3
+        }
+      },
+      "bank": {
+        "#map": [
+          [
+            "A",
+            {
+              "#map": [
+                [
+                  "uosmo",
+                  5
+                ],
+                [
+                  "ujuno",
+                  5
+                ],
+                [
+                  "uatom",
+                  5
+                ]
+              ]
+            }
+          ],
+          [
+            "B",
+            {
+              "#map": [
+                [
+                  "uatom",
+                  3
+                ],
+                [
+                  "ujuno",
+                  3
+                ],
+                [
+                  "uosmo",
+                  5
+                ]
+              ]
+            }
+          ],
+          [
+            "C",
+            {
+              "#map": [
+                [
+                  "uosmo",
+                  5
+                ],
+                [
+                  "uatom",
+                  6
+                ],
+                [
+                  "ujuno",
+                  3
+                ]
+              ]
+            }
+          ]
+        ]
+      },
+      "lp_bank": {
+        "#map": [
+          [
+            "A",
+            {
+              "#map": [
+                
+              ]
+            }
+          ],
+          [
+            "B",
+            {
+              "#map": [
+                [
+                  1,
+                  {
+                    "#bigint": "49999999999999999997"
+                  }
+                ]
+              ]
+            }
+          ],
+          [
+            "C",
+            {
+              "#map": [
+                
+              ]
+            }
+          ]
+        ]
+      },
+      "outcome": {
+        "tag": "UpdatePool",
+        "value": {
+          "deltas": {
+            "#map": [
+              [
+                "uatom",
+                0
+              ],
+              [
+                "ujuno",
+                0
               ]
             ]
           }
@@ -688,18 +795,18 @@
             "#map": [
               [
                 "uatom",
-                2
+                1
               ],
               [
                 "ujuno",
-                2
+                4
               ]
             ]
           },
           "exit_fee": 0,
           "id": 1,
           "share": {
-            "#bigint": "100000000000000000000"
+            "#bigint": "49999999999999999997"
           },
           "swap_fee": 0,
           "weights": {
@@ -710,38 +817,6 @@
               ],
               [
                 "ujuno",
-                1
-              ]
-            ]
-          }
-        },
-        {
-          "amounts": {
-            "#map": [
-              [
-                "uatom",
-                1
-              ],
-              [
-                "uosmo",
-                4
-              ]
-            ]
-          },
-          "exit_fee": 0,
-          "id": 2,
-          "share": {
-            "#bigint": "100000000000000000000"
-          },
-          "swap_fee": 0,
-          "weights": {
-            "#map": [
-              [
-                "uosmo",
-                1
-              ],
-              [
-                "uatom",
                 1
               ]
             ]
