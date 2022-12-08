@@ -130,15 +130,46 @@ Scenario: ExitPool can leave with zero assets with a low share
 
 Outcome: Pass
 
+Explanation:
+
+```
+Pool create:
+uosmo: 1
+uatom: 1
+share: 10^20
+
+Pool exit:
+out_share: 1
+out_uosmo: 0
+out_uatom: 0
+
+Pool status:
+uosmo: 1
+uatom: 1
+share: 10^20 - 1
+```
+
 Traces: `traces/scenarios/scenario9.itf.json`
 
 ---
 
-Scenario: Swap using a pool
+Scenario: Swap using a pool via `swap-exact-amount-in`
 
 Outcome: Pass
 
-Traces: `traces/scenarios/scenario12.itf.json`
+Traces: `traces/scenarios/scenario12.itf.json`, `traces/scenarios/scenario13.itf.json`
+
+---
+
+Scenario: Swap using a pool via `swap-exact-amount-out`
+
+Outcome:
+
+```
+(Code 13) no fee attached: insufficient fee
+```
+
+Traces: `traces/scenarios/scenario14.itf.json`
 
 ---
 
