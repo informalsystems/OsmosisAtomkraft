@@ -94,14 +94,8 @@ def get_user_balance(testnet: Testnet, user: str, home_dir: Path) -> Optional[Di
 
 
 def log_current_lp(testnet: Testnet, pool_id: int, home_dir: Path) -> None:
-    lp_data = munch.munchify(get_current_lp(testnet, pool_id, home_dir))
-    if lp_data:
-        logging.info("\tCurrent LP:")
-        logging.info("\t\tDenom: %s", lp_data.pool.total_shares.denom)
-        logging.info("\t\tShare: %s", lp_data.pool.total_shares.amount)
-        logging.info("\t\t\tAssets:")
-        for e in lp_data.pool.pool_assets:
-            logging.info("\t\t\t\t%s%s", e.token.amount, e.token.denom)
+    lp_data = get_current_lp(testnet, pool_id, home_dir)
+    logging.info(lp_data["pool"])
 
 
 @step("Genesis")
@@ -363,8 +357,8 @@ def exit_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
                 logging.info(f"\tFailure: (Code {code}) {msg}")
 
 
-@step("SwapAmount")
-def swap_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
+@step("SwapInAmount")
+def swap_in_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
     """
     Implements the effects of the step `exit pool`
     on blockchain `testnet` and state `state`.
@@ -372,7 +366,7 @@ def swap_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
     """
 
     # TODO: replace the logging stub with the effects of the action `exit pool`
-    logging.info("Step: swap amount")
+    logging.info("Step: swap in amount")
     # Tx Msg:
     # osmosisd tx gamm exit-swap-extern-amount-out [token-out] [share-in-max-amount] [flags]
     logging.info(
@@ -390,6 +384,8 @@ def swap_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
 
     amount_out = -outcome.value.deltas[action.value.denom_out]
 
+    assert amount_out >= 0
+
     if lp_data:
         args = (
             f"{testnet.binary} "
@@ -401,6 +397,81 @@ def swap_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
             f"--swap-route-denoms {action.value.denom_out} "
             f"--from {action.value.sender} "
             "--broadcast-mode block "
+            "--fees 0uosmo "
+            "-y "
+            "--keyring-backend test "
+            f"--home {home_dir} "
+            f"--chain-id {testnet.chain_id} "
+            f"--node {rpc_addr} "
+            "--output json "
+        ).split()
+        proc = subprocess.run(args, capture_output=True)
+
+        if proc.returncode:
+            logging.info(f"\tCLI Error: {proc.stderr.decode()}")
+        else:
+            result = None
+            if proc.stdout:
+                result = munch.munchify(json.loads(proc.stdout.decode()))
+
+            if result is None:
+                logging.info("\tNo response!!")
+            elif result.code == 0:
+                logging.info("\tSuccess")
+                log_current_lp(testnet, action.value.id, home_dir)
+                logging.info(munch.unmunchify(pools[action.value.id - 1]))
+                logging.info(
+                    "New balance of %s: %s",
+                    action.value.sender,
+                    get_user_balance(testnet, action.value.sender, home_dir),
+                )
+            else:
+                code = result.code
+                msg = result.raw_log
+                logging.info(f"\tFailure: (Code {code}) {msg}")
+
+
+@step("SwapOutAmount")
+def swap_out_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
+    """
+    Implements the effects of the step `exit pool`
+    on blockchain `testnet` and state `state`.
+    It additionally has access to the model (trace) state variable `action`.
+    """
+
+    # TODO: replace the logging stub with the effects of the action `exit pool`
+    logging.info("Step: swap out amount")
+    # Tx Msg:
+    # osmosisd tx gamm exit-swap-extern-amount-out [token-out] [share-in-max-amount] [flags]
+    logging.info(
+        "Old balance of %s: %s",
+        action.value.sender,
+        get_user_balance(testnet, action.value.sender, home_dir),
+    )
+    logging.info(munch.unmunchify(action))
+    logging.info(munch.unmunchify(outcome))
+
+    # create transaction and send it to nodes rpc port
+    rpc_addr = testnet.get_validator_port(0, "rpc")
+
+    lp_data = get_current_lp(testnet, action.value.id, home_dir)
+
+    amount_in = outcome.value.deltas[action.value.denom_in]
+
+    assert amount_in >= 0
+
+    if lp_data:
+        args = (
+            f"{testnet.binary} "
+            "tx gamm "
+            "swap-exact-amount-out "
+            f"{action.value.amount_out}{action.value.denom_out} "
+            f"{amount_in} "
+            f"--swap-route-pool-ids {action.value.id} "
+            f"--swap-route-denoms {action.value.denom_out} "
+            f"--from {action.value.sender} "
+            "--broadcast-mode block "
+            "--fees 0uosmo "
             "-y "
             "--keyring-backend test "
             f"--home {home_dir} "
