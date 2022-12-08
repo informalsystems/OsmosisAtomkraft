@@ -188,7 +188,7 @@
             "#map": [
               [
                 "uatom",
-                3
+                2
               ],
               [
                 "ujuno",
@@ -223,7 +223,7 @@
                 ],
                 [
                   "uatom",
-                  5
+                  6
                 ],
                 [
                   "ujuno",
@@ -317,7 +317,7 @@
             "#map": [
               [
                 "uatom",
-                3
+                2
               ],
               [
                 "ujuno",
@@ -353,7 +353,7 @@
       "action": {
         "tag": "SwapOutAmount",
         "value": {
-          "amount_out": 2,
+          "amount_out": 4,
           "denom_in": "uatom",
           "denom_out": "ujuno",
           "id": 1,
@@ -372,7 +372,7 @@
                 ],
                 [
                   "uatom",
-                  5
+                  6
                 ],
                 [
                   "ujuno",
@@ -410,11 +410,11 @@
                 ],
                 [
                   "ujuno",
-                  10
+                  12
                 ],
                 [
                   "uatom",
-                  7
+                  6
                 ]
               ]
             }
@@ -461,11 +461,11 @@
             "#map": [
               [
                 "uatom",
-                1
+                2
               ],
               [
                 "ujuno",
-                -2
+                -4
               ]
             ]
           }
@@ -481,7 +481,7 @@
               ],
               [
                 "ujuno",
-                6
+                4
               ]
             ]
           },
