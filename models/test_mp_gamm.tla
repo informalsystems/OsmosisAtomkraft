@@ -22,7 +22,8 @@ EXTENDS Apalache, Integers, Sequences, FiniteSets, Variants, HighPrecisionDec
         CreatePool({sender: Str, amounts: $denom -> Int, weights: $denom -> Int}) |
         JoinPool({sender: Str, id: $lpId, share: Int}) |
         ExitPool({sender: Str, id: $lpId, share: Int}) |
-        SwapAmount({sender: Str, id: $lpId, denom_in: $denom, amount_in: Int, denom_out: $denom}) |
+        SwapInAmount({sender: Str, id: $lpId, denom_in: $denom, denom_out: $denom, amount_in: Int}) |
+        SwapOutAmount({sender: Str, id: $lpId, denom_in: $denom, denom_out: $denom, amount_out: Int}) |
         Genesis(Str -> $denom -> Int);
 
     @typeAlias: outcome =
@@ -173,9 +174,9 @@ UpdatePoolNext(sender) ==
                 deltas |-> [d \in DOMAIN pools[pool_id].amounts |-> pools'[pool_id].amounts[d] - pools[pool_id].amounts[d]]
             ])
 
-
-\* @type: ($pool, Int, $denom, $denom) => Int;
-CalcAmountOut(pool, amount_in, denom_in, denom_out) ==
+\* amount_in can be negative
+\* @type: ($pool, $denom, $denom, Int) => Int;
+CalcAmountOut(pool, denom_in, denom_out, amount_in) ==
     LET
     current_balance_in == ToDec(pool.amounts[denom_in])
     current_balance_out == ToDec(pool.amounts[denom_out])
@@ -187,19 +188,21 @@ CalcAmountOut(pool, amount_in, denom_in, denom_out) ==
     \* weight_ratio == pool.weights[denom_in] \div pool.weights[denom_out]
     \*
     \* TODO: Z3 doesn't support constraining exponents
-    \*
     \* next_balance_out == Mult(current_balance_out, PowInt(Div(current_balance_in, next_balance_in), weight_ratio))
+    \*
     \* when weight_ratio is 1
     next_balance_out == Mult(current_balance_out, Div(current_balance_in, next_balance_in))
     IN
     pool.amounts[denom_out] - Floor(next_balance_out)
 
 
-\* @type: (Str, $lpId, Int, $denom, $denom) => Bool;
-SwapAmountHandler(sender, pool_id, amount_in, denom_in, denom_out) ==
+\* if amount is positive, we are calculating amount_out
+\* if amount is negative, we are calculating amount_in
+\* @type: (Str, $lpId, $denom, $denom, Int) => Bool;
+SwapAmountHandler(sender, pool_id, denom_in, denom_out, amount_in) ==
     LET
     old_pool == pools[pool_id]
-    amount_out == CalcAmountOut(old_pool, amount_in, denom_in, denom_out)
+    amount_out == CalcAmountOut(old_pool, denom_in, denom_out, amount_in)
     new_pool == [old_pool EXCEPT !.amounts = MergeMap(@, SetAsFun({<<denom_in, amount_in>>, <<denom_out, -amount_out>>}))]
     old_balance == bank[sender]
     new_balance == MergeMap(old_balance, SetAsFun({<<denom_in, -amount_in>>, <<denom_out, amount_out>>}))
@@ -220,15 +223,19 @@ SwapAmountHandler(sender, pool_id, amount_in, denom_in, denom_out) ==
 \* @type: Str => Bool;
 SwapAmountNext(sender) ==
     \E pool_id \in DOMAIN pools:
-    \E amount_in \in Nat:
+    \E amount \in Nat:
     \E denom_in \in DOMAIN pools[pool_id].amounts:
     \E denom_out \in DOMAIN pools[pool_id].amounts:
         /\ denom_in /= denom_out
-        /\ amount_in > 0
-        /\ SwapAmountHandler(sender, pool_id, amount_in, denom_in, denom_out)
-        /\ action' = Variant("SwapAmount", [
-                sender |-> sender, id |-> pool_id, denom_in |-> denom_in, amount_in |-> amount_in, denom_out |-> denom_out
-            ])
+        /\ amount > 0
+        /\ \/ /\ SwapAmountHandler(sender, pool_id, denom_in, denom_out, amount)
+              /\ action' = Variant("SwapInAmount", [
+                    sender |-> sender, id |-> pool_id, denom_in |-> denom_in, denom_out |-> denom_out, amount_in |-> amount
+                ])
+           \/ /\ SwapAmountHandler(sender, pool_id, denom_out, denom_in, -amount)
+              /\ action' = Variant("SwapOutAmount", [
+                    sender |-> sender, id |-> pool_id, denom_in |-> denom_in, denom_out |-> denom_out, amount_out |-> amount
+                ])
         /\ outcome' = Variant("UpdatePool", [
                 deltas |-> [d \in DOMAIN pools[pool_id].amounts |-> pools'[pool_id].amounts[d] - pools[pool_id].amounts[d]]
             ])
