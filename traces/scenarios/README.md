@@ -263,6 +263,24 @@ Traces: `traces/scenarios/scenario15.itf.json`
 
 ---
 
+Scenario: Swap using a pool via `swap-exact-amount-out`
+
+Outcome: Two panics
+
+```
+Failure: (Code 111222) recovered: base must be lesser than two
+...
+```
+
+```
+Failure: (Code 111222) recovered: base must be greater than 0
+...
+```
+
+Traces: `traces/scenarios/scenario16.itf.json`
+
+---
+
 Scenario: Create, join and exit pools with more than two denominations. (Info: ValidateBasic will reject creation of pools with more than 8 denominations)
 
 Outcome:
