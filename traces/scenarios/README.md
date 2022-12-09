@@ -270,14 +270,30 @@ Outcome: Two panics
 ```
 Failure: (Code 111222) recovered: base must be lesser than two
 ...
+: panic
 ```
 
 ```
 Failure: (Code 111222) recovered: base must be greater than 0
 ...
+: panic
 ```
 
 Traces: `traces/scenarios/scenario16.itf.json`
+
+---
+
+Scenario: Swap using a pool via `swap-exact-amount-out`
+
+Outcome: Two panics
+
+```
+Failure: (Code 111222) recovered: division by zero
+...
+: panic
+```
+
+Traces: `traces/scenarios/scenario17.itf.json`
 
 ---
 
