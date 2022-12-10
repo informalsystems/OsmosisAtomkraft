@@ -209,8 +209,10 @@ SwapAmountHandler(_sender, _pool_id, _denom_in, _denom_out, _amount_in) ==
     _old_balance == bank[_sender]
     _new_balance == MergeMap(_old_balance, SetAsFun({<<_denom_in, -_amount_in>>, <<_denom_out, _amount_out>>}))
     IN
-    \* pre-condition: because Z3 doesn't support constraining exponents
-    \* assumes, the weight ratio is 1
+    \* assumption: _amount_out can not be zero (CLI Error)
+    /\ _amount_out /= 0
+    \* assumption: the weight ratio is 1
+    \* because Z3 doesn't support constraining exponents
     /\ _old_pool.weights[_denom_in] = _old_pool.weights[_denom_out]
     \* pre-condition: can not swap with more than available amounts
     /\ \A _d \in DOMAIN _new_balance: _new_balance[_d] >= 0
