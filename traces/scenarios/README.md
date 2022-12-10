@@ -297,6 +297,30 @@ Traces: `traces/scenarios/scenario17.itf.json`
 
 ---
 
+Scenario: Join pool
+
+Outcome:
+
+```
+Failure: (Code 1) failed to execute message; message index: 0: unexpected error in MaximalExactRatioJoin
+```
+
+Traces: `traces/scenarios/scenario18.itf.json`, `traces/scenarios/scenario20.itf.json`
+
+---
+
+Scenario: Swap in amount
+
+Outcome:
+
+```
+Failure: (Code 1) failed to execute message; message index: 0: function swapExactAmountIn failed due to internal reason: base must be greater than 0
+```
+
+Traces: `traces/scenarios/scenario19.itf.json`, `traces/scenarios/scenario20.itf.json`
+
+---
+
 Scenario: Create, join and exit pools with more than two denominations. (Info: ValidateBasic will reject creation of pools with more than 8 denominations)
 
 Outcome:
