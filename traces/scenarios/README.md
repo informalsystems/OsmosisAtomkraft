@@ -3,7 +3,7 @@
 ## Execute all scenarios
 
 ```
-atomkraft test trace --path traces/scenarios --reactor=reactors/mp_gamm.py --keypath=action.tag
+atomkraft test trace --path=traces/scenarios  --reactor=reactors/mp_gamm.py --keypath=action.tag
 ```
 
 ## List of test scenarios
@@ -47,7 +47,7 @@ Outcome:
 failed to parse coins: failed to parse decimal coin amount: 133499189745056880149688856635597007162669032647290798121690100488888732861290034376435130433535: decimal out of range; bitLen: got 376, max 256
 ```
 
-Traces: `traces/scenarios/scenario2.itf.json`
+Traces: `traces/sdk/scenario2.itf.json`
 
 ---
 
@@ -59,7 +59,7 @@ Outcome:
 failed to parse coins: failed to parse decimal coin amount: 115792089237316195423570985008687907853269984665640564039457584007913129639935: decimal out of range; bitLen: got 316, max 256
 ```
 
-Traces: `traces/scenarios/scenario3.itf.json`
+Traces: `traces/sdk/scenario3.itf.json`
 
 ---
 
