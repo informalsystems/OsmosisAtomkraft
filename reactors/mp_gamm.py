@@ -22,6 +22,7 @@ import random
 import string
 import subprocess
 from pathlib import Path
+from subprocess import CompletedProcess
 from typing import Dict, Optional
 
 import munch
@@ -57,7 +58,7 @@ def get_current_lp(testnet: Testnet, pool_id: int, home_dir: Path) -> Optional[D
     proc = subprocess.run(args, capture_output=True, check=False)
 
     if proc.returncode:
-        logging.info("Pool query error: %s", proc.stderr.decode())
+        logging.warning("\t[Pool query error]: %s", proc.stderr.decode())
         return None
 
     return json.loads(proc.stdout.decode())
@@ -87,7 +88,7 @@ def get_user_balance(testnet: Testnet, user: str, home_dir: Path) -> Optional[Di
     proc = subprocess.run(args, capture_output=True, check=False)
 
     if proc.returncode:
-        logging.info("Bank query error: %s", proc.stderr.decode())
+        logging.warning("\t[Bank query error]: %s", proc.stderr.decode())
         return None
 
     return json.loads(proc.stdout.decode())["balances"]
@@ -95,7 +96,14 @@ def get_user_balance(testnet: Testnet, user: str, home_dir: Path) -> Optional[Di
 
 def log_current_lp(testnet: Testnet, pool_id: int, home_dir: Path) -> None:
     lp_data = get_current_lp(testnet, pool_id, home_dir)
-    logging.info(lp_data["pool"])
+    logging.info("\t[Pool status]: %s", lp_data["pool"])
+
+
+def run_capture_output(cmd_string) -> CompletedProcess:
+    logging.info("\t[Tx CMD]: %s", cmd_string)
+    args = cmd_string.split()
+    proc = subprocess.run(args, capture_output=True)
+    return proc
 
 
 @step("Genesis")
@@ -105,7 +113,7 @@ def init(testnet: Testnet, home_dir: Path, action):
     on blockchain `testnet` and state `state`.
     It additionally has access to the model (trace) state variable `action`.
     """
-    logging.info("Step: init")
+    logging.info("[Step]: init")
 
     # TODO Mirel: we need to be assigning wallets, as in transfer example in init state -> TLA spec change is needed
     # identifiers -> wallets
@@ -115,7 +123,7 @@ def init(testnet: Testnet, home_dir: Path, action):
     testnet.oneshot()
     # Tendermint event sybscriber
     with TmEventSubscribe({"tm.event": "NewBlock"}):
-        logging.info("\tStatus: Testnet launched...\n")
+        logging.info("\t[Status]: Testnet launched...\n")
 
     # recover accounts for a testnet
     for (user, account) in testnet.accounts.items():
@@ -146,7 +154,7 @@ def create_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
     pool_file_location = home_dir / "pool-files"
     pool_file_location.mkdir(exist_ok=True, parents=True)
     pool_file_name = "pool-file-config.json"
-    logging.info("Step: create pool")
+    logging.info("[Step]: create pool")
 
     """
     pool file should look like:
@@ -187,7 +195,7 @@ def create_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
     # create transaction and send it to nodes rpc port
     rpc_addr = testnet.get_validator_port(0, "rpc")
 
-    args = (
+    proc = run_capture_output(
         f"{testnet.binary} "
         "tx gamm "
         "create-pool "
@@ -201,23 +209,22 @@ def create_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
         f"--chain-id {testnet.chain_id} "
         f"--node {rpc_addr} "
         "--output json "
-    ).split()
-    proc = subprocess.run(args, capture_output=True)
+    )
 
     # subscribe to event or check the result of broadcasting the tx
     # event = TmEventSubscribe({"tm.event":"Tx"})._subscribe("AND pool-create.pool-id"):
 
     if proc.returncode:
-        logging.info(f"\tCLI Error: {proc.stderr.decode()}")
+        logging.error(f"\t[CLI Error]: {proc.stderr.decode()}")
     else:
         result = None
         if proc.stdout:
             result = munch.munchify(json.loads(proc.stdout.decode()))
 
         if result is None:
-            logging.info("\tNo response!!")
+            logging.warning("\t[CLI Error]: No response!!")
         elif result.code == 0:
-            logging.info("\tSuccess")
+            # logging.info("\t[Tx status]: Success")
             for event in result.logs[0].events:
                 if event.type == "pool_created":
                     assert event.attributes[0].key == "pool_id"
@@ -230,7 +237,7 @@ def create_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
         else:
             code = result.code
             msg = result.raw_log
-            logging.info(f"\tFailure: (Code {code}) {msg}")
+            logging.error("\t(Code %s) %s", code, msg)
 
 
 @step("JoinPool")
@@ -242,7 +249,7 @@ def join_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
     """
 
     # TODO: replace the logging stub with the effects of the action `join pool`
-    logging.info("Step: join pool")
+    logging.info("[Step]: join pool")
     # Tx Msg: osmosisd tx gamm join-pool --pool-id --max-amounts-in --share-amount-out --from --chain-id
     # osmosisd tx gamm join-swap-extern-amount-in [token-in] [share-out-min-amount]
     logging.info(munch.unmunchify(action))
@@ -258,7 +265,7 @@ def join_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
             f"--max-amounts-in {a}{d}" for (d, a) in outcome.value.deltas.items()
         )
 
-        args = (
+        proc = run_capture_output(
             f"{testnet.binary} "
             "tx gamm "
             "join-pool "
@@ -274,26 +281,25 @@ def join_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
             f"--chain-id {testnet.chain_id} "
             f"--node {rpc_addr} "
             "--output json "
-        ).split()
-        proc = subprocess.run(args, capture_output=True)
+        )
 
         if proc.returncode:
-            logging.info(f"\tCLI Error: {proc.stderr.decode()}")
+            logging.error(f"\t[CLI Error]: {proc.stderr.decode()}")
         else:
             result = None
             if proc.stdout:
                 result = munch.munchify(json.loads(proc.stdout.decode()))
 
             if result is None:
-                logging.info("\tNo response!!")
+                logging.warning("\t[CLI]: No response!!")
             elif result.code == 0:
-                logging.info("\tSuccess")
+                # logging.info("\t[CLI status]: Success")
                 log_current_lp(testnet, action.value.id, home_dir)
                 logging.info(munch.unmunchify(pools[action.value.id - 1]))
             else:
                 code = result.code
                 msg = result.raw_log
-                logging.info(f"\tFailure: (Code {code}) {msg}")
+                logging.error(f"\t(Code %s) %s", code, msg)
 
 
 @step("ExitPool")
@@ -305,7 +311,7 @@ def exit_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
     """
 
     # TODO: replace the logging stub with the effects of the action `exit pool`
-    logging.info("Step: exit pool")
+    logging.info("[Step]: exit pool")
     # Tx Msg:
     # osmosisd tx gamm exit-swap-extern-amount-out [token-out] [share-in-max-amount] [flags]
     logging.info(munch.unmunchify(action))
@@ -322,7 +328,7 @@ def exit_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
             f"--min-amounts-out {abs(a)}{d}" for (d, a) in outcome.value.deltas.items()
         )
 
-        args = (
+        proc = run_capture_output(
             f"{testnet.binary} "
             "tx gamm "
             "exit-pool "
@@ -338,26 +344,25 @@ def exit_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
             f"--chain-id {testnet.chain_id} "
             f"--node {rpc_addr} "
             "--output json "
-        ).split()
-        proc = subprocess.run(args, capture_output=True)
+        )
 
         if proc.returncode:
-            logging.info(f"\tCLI Error: {proc.stderr.decode()}")
+            logging.error(f"\t[CLI error]: {proc.stderr.decode()}")
         else:
             result = None
             if proc.stdout:
                 result = munch.munchify(json.loads(proc.stdout.decode()))
 
             if result is None:
-                logging.info("\tNo response!!")
+                logging.warning("\t[CLI]: No response!!")
             elif result.code == 0:
-                logging.info("\tSuccess")
+                # logging.info("\t[CLI Status]: Success")
                 log_current_lp(testnet, action.value.id, home_dir)
                 logging.info(munch.unmunchify(pools[action.value.id - 1]))
             else:
                 code = result.code
                 msg = result.raw_log
-                logging.info(f"\tFailure: (Code {code}) {msg}")
+                logging.error("\t(Code %s) %s", code, msg)
 
 
 @step("SwapInAmount")
@@ -369,7 +374,7 @@ def swap_in_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
     """
 
     # TODO: replace the logging stub with the effects of the action `exit pool`
-    logging.info("Step: swap in amount")
+    logging.info("[Step]: swap in amount")
     # Tx Msg:
     # osmosisd tx gamm exit-swap-extern-amount-out [token-out] [share-in-max-amount] [flags]
     logging.info(
@@ -390,7 +395,7 @@ def swap_in_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
     assert amount_out >= 0
 
     if lp_data:
-        args = (
+        proc = run_capture_output(
             f"{testnet.binary} "
             "tx gamm "
             "swap-exact-amount-in "
@@ -407,20 +412,19 @@ def swap_in_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
             f"--chain-id {testnet.chain_id} "
             f"--node {rpc_addr} "
             "--output json "
-        ).split()
-        proc = subprocess.run(args, capture_output=True)
+        )
 
         if proc.returncode:
-            logging.info(f"\tCLI Error: {proc.stderr.decode()}")
+            logging.error(f"\t[CLI Error]: {proc.stderr.decode()}")
         else:
             result = None
             if proc.stdout:
                 result = munch.munchify(json.loads(proc.stdout.decode()))
 
             if result is None:
-                logging.info("\tNo response!!")
+                logging.warning("\t[CLI]: No response!!")
             elif result.code == 0:
-                logging.info("\tSuccess")
+                # logging.info("\t[CLI Status]: Success")
                 log_current_lp(testnet, action.value.id, home_dir)
                 logging.info(munch.unmunchify(pools[action.value.id - 1]))
                 logging.info(
@@ -431,7 +435,7 @@ def swap_in_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
             else:
                 code = result.code
                 msg = result.raw_log
-                logging.info(f"\tFailure: (Code {code}) {msg}")
+                logging.error("\t(Code %s) %s", code, msg)
 
 
 @step("SwapOutAmount")
@@ -443,7 +447,7 @@ def swap_out_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
     """
 
     # TODO: replace the logging stub with the effects of the action `exit pool`
-    logging.info("Step: swap out amount")
+    logging.info("[Step]: swap out amount")
     # Tx Msg:
     # osmosisd tx gamm exit-swap-extern-amount-out [token-out] [share-in-max-amount] [flags]
     logging.info(
@@ -464,7 +468,7 @@ def swap_out_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
     assert amount_in >= 0
 
     if lp_data:
-        args = (
+        proc = run_capture_output(
             f"{testnet.binary} "
             "tx gamm "
             "swap-exact-amount-out "
@@ -481,20 +485,19 @@ def swap_out_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
             f"--chain-id {testnet.chain_id} "
             f"--node {rpc_addr} "
             "--output json "
-        ).split()
-        proc = subprocess.run(args, capture_output=True)
+        )
 
         if proc.returncode:
-            logging.info(f"\tCLI Error: {proc.stderr.decode()}")
+            logging.error(f"\t[CLI Error]: {proc.stderr.decode()}")
         else:
             result = None
             if proc.stdout:
                 result = munch.munchify(json.loads(proc.stdout.decode()))
 
             if result is None:
-                logging.info("\tNo response!!")
+                logging.warning("\t[CLI]: No response!!")
             elif result.code == 0:
-                logging.info("\tSuccess")
+                # logging.info("\t[CLI status]: Success")
                 log_current_lp(testnet, action.value.id, home_dir)
                 logging.info(munch.unmunchify(pools[action.value.id - 1]))
                 logging.info(
@@ -505,4 +508,77 @@ def swap_out_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
             else:
                 code = result.code
                 msg = result.raw_log
-                logging.info(f"\tFailure: (Code {code}) {msg}")
+                logging.error("\t(Code %s) %s", code, msg)
+
+
+@step("ExitAndSwapAmount")
+def exit_and_swap_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
+    """
+    Implements the effects of the step `exit pool`
+    on blockchain `testnet` and state `state`.
+    It additionally has access to the model (trace) state variable `action`.
+    """
+
+    # TODO: replace the logging stub with the effects of the action `exit pool`
+    logging.info("Step: exit and swap")
+    # Tx Msg:
+    # osmosisd tx gamm exit-swap-extern-amount-out [token-out] [share-in-max-amount] [flags]
+    logging.info(
+        "Old balance of %s: %s",
+        action.value.sender,
+        get_user_balance(testnet, action.value.sender, home_dir),
+    )
+    logging.info(munch.unmunchify(action))
+    logging.info(munch.unmunchify(outcome))
+
+    # create transaction and send it to nodes rpc port
+    rpc_addr = testnet.get_validator_port(0, "rpc")
+
+    lp_data = get_current_lp(testnet, action.value.id, home_dir)
+
+    amount_out = -outcome.value.deltas[action.value.denom_out]
+
+    assert amount_out >= 0
+
+    if lp_data:
+        proc = run_capture_output(
+            f"{testnet.binary} "
+            "tx gamm "
+            "exit-swap-share-amount-in "
+            f"{action.value.denom_out} "
+            f"{action.value.share} "
+            f"{amount_out} "
+            f"--pool-id {action.value.id} "
+            f"--from {action.value.sender} "
+            "--broadcast-mode block "
+            "--gas 500000 "
+            "-y "
+            "--keyring-backend test "
+            f"--home {home_dir} "
+            f"--chain-id {testnet.chain_id} "
+            f"--node {rpc_addr} "
+            "--output json "
+        )
+
+        if proc.returncode:
+            logging.error(f"\t[CLI Error]: {proc.stderr.decode()}")
+        else:
+            result = None
+            if proc.stdout:
+                result = munch.munchify(json.loads(proc.stdout.decode()))
+
+            if result is None:
+                logging.warning("\t[CLI]: No response!!")
+            elif result.code == 0:
+                # logging.info("\t[CLI Status]: Success")
+                log_current_lp(testnet, action.value.id, home_dir)
+                logging.info(munch.unmunchify(pools[action.value.id - 1]))
+                logging.info(
+                    "New balance of %s: %s",
+                    action.value.sender,
+                    get_user_balance(testnet, action.value.sender, home_dir),
+                )
+            else:
+                code = result.code
+                msg = result.raw_log
+                logging.error("\t(Code %s) %s", code, msg)
