@@ -12,7 +12,9 @@ All step functions receive the following arguments:
              executed.
     action: object from the trace which corresponds to the parameters
             of the taken step.
-    home_dir: directory of binary file
+    outcome: object from the trace which corresponds to the outcomes
+            of the taken step
+    home_dir: home directory of client binary
 """
 
 import json
@@ -109,14 +111,12 @@ def run_capture_output(cmd_string) -> CompletedProcess:
 @step("Genesis")
 def init(testnet: Testnet, home_dir: Path, action):
     """
-    Implements the effects of the step `init`
+    Implements the effects of the step `Genesis`
     on blockchain `testnet` and state `state`.
     It additionally has access to the model (trace) state variable `action`.
     """
     logging.info("[Step]: init")
 
-    # TODO Mirel: we need to be assigning wallets, as in transfer example in init state -> TLA spec change is needed
-    # identifiers -> wallets
     testnet.set_accounts(action.value.keys())
     testnet.set_account_balances(action.value)
     testnet.verbose = True
@@ -125,7 +125,7 @@ def init(testnet: Testnet, home_dir: Path, action):
     with TmEventSubscribe({"tm.event": "NewBlock"}):
         logging.info("\t[Status]: Testnet launched...\n")
 
-    # recover accounts for a testnet
+    # initialize accounts for client binary
     for (user, account) in testnet.accounts.items():
         args = (
             f"{testnet.binary} "
@@ -144,9 +144,9 @@ def init(testnet: Testnet, home_dir: Path, action):
 @step("CreatePool")
 def create_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
     """
-    Implements the effects of the step `create pool`
+    Implements the effects of the step `CreatePool`
     on blockchain `testnet` and state `state`.
-    It additionally has access to the model (trace) state variable `action`.
+    It additionally has access to the model (trace) state variable `action`, `outcome`, `pools`.
     """
 
     # TX Msg: osmosisd tx gamm create-pool --pool-file [config-file] --from WALLET_NAME --chain-id osmosis-1
@@ -186,13 +186,8 @@ def create_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
     logging.info(munch.unmunchify(action))
     logging.info(munch.unmunchify(outcome))
 
-    # action = action.tag
-    # we need to remember poolId -> created pool Id on chain, due to test asertions
-    # read this from the result -> add mapping TLA_poolID -> chain_poolID (add this map as part of the def state)
-
     sender_id = action.value.sender
 
-    # create transaction and send it to nodes rpc port
     rpc_addr = testnet.get_validator_port(0, "rpc")
 
     proc = run_capture_output(
@@ -210,9 +205,6 @@ def create_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
         f"--node {rpc_addr} "
         "--output json "
     )
-
-    # subscribe to event or check the result of broadcasting the tx
-    # event = TmEventSubscribe({"tm.event":"Tx"})._subscribe("AND pool-create.pool-id"):
 
     if proc.returncode:
         logging.error(f"\t[CLI Error]: {proc.stderr.decode()}")
@@ -243,12 +235,11 @@ def create_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
 @step("JoinPool")
 def join_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
     """
-    Implements the effects of the step `join pool`
+    Implements the effects of the step `JoinPool`
     on blockchain `testnet` and state `state`.
-    It additionally has access to the model (trace) state variable `action`.
+    It additionally has access to the model (trace) state variable `action`, `outcome`, `pools`.
     """
 
-    # TODO: replace the logging stub with the effects of the action `join pool`
     logging.info("[Step]: join pool")
     # Tx Msg: osmosisd tx gamm join-pool --pool-id --max-amounts-in --share-amount-out --from --chain-id
     # osmosisd tx gamm join-swap-extern-amount-in [token-in] [share-out-min-amount]
@@ -305,19 +296,17 @@ def join_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
 @step("ExitPool")
 def exit_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
     """
-    Implements the effects of the step `exit pool`
+    Implements the effects of the step `ExitPool`
     on blockchain `testnet` and state `state`.
-    It additionally has access to the model (trace) state variable `action`.
+    It additionally has access to the model (trace) state variable `action`, `outcome`, `pools`.
     """
 
-    # TODO: replace the logging stub with the effects of the action `exit pool`
     logging.info("[Step]: exit pool")
     # Tx Msg:
     # osmosisd tx gamm exit-swap-extern-amount-out [token-out] [share-in-max-amount] [flags]
     logging.info(munch.unmunchify(action))
     logging.info(munch.unmunchify(outcome))
 
-    # create transaction and send it to nodes rpc port
     rpc_addr = testnet.get_validator_port(0, "rpc")
 
     lp_data = get_current_lp(testnet, action.value.id, home_dir)
@@ -368,15 +357,14 @@ def exit_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
 @step("SwapInAmount")
 def swap_in_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
     """
-    Implements the effects of the step `exit pool`
+    Implements the effects of the step `SwapInAmount`
     on blockchain `testnet` and state `state`.
-    It additionally has access to the model (trace) state variable `action`.
+    It additionally has access to the model (trace) state variable `action`, `outcome`, `pools`.
     """
 
-    # TODO: replace the logging stub with the effects of the action `exit pool`
     logging.info("[Step]: swap in amount")
     # Tx Msg:
-    # osmosisd tx gamm exit-swap-extern-amount-out [token-out] [share-in-max-amount] [flags]
+    # osmosisd tx gamm swap-exact-amount-in [token-in] [token-out-min-amount] [flags]
     logging.info(
         "Old balance of %s: %s",
         action.value.sender,
@@ -385,11 +373,11 @@ def swap_in_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
     logging.info(munch.unmunchify(action))
     logging.info(munch.unmunchify(outcome))
 
-    # create transaction and send it to nodes rpc port
     rpc_addr = testnet.get_validator_port(0, "rpc")
 
     lp_data = get_current_lp(testnet, action.value.id, home_dir)
 
+    # denom out delta is negative
     amount_out = -outcome.value.deltas[action.value.denom_out]
 
     assert amount_out >= 0
@@ -441,15 +429,14 @@ def swap_in_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
 @step("SwapOutAmount")
 def swap_out_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
     """
-    Implements the effects of the step `exit pool`
+    Implements the effects of the step `SwapOutAmount`
     on blockchain `testnet` and state `state`.
-    It additionally has access to the model (trace) state variable `action`.
+    It additionally has access to the model (trace) state variable `action`, `outcome`, `pools`.
     """
 
-    # TODO: replace the logging stub with the effects of the action `exit pool`
     logging.info("[Step]: swap out amount")
     # Tx Msg:
-    # osmosisd tx gamm exit-swap-extern-amount-out [token-out] [share-in-max-amount] [flags]
+    # osmosisd tx gamm swap-exact-amount-out [token-out] [token-in-max-amount] [flags]
     logging.info(
         "Old balance of %s: %s",
         action.value.sender,
@@ -458,7 +445,6 @@ def swap_out_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
     logging.info(munch.unmunchify(action))
     logging.info(munch.unmunchify(outcome))
 
-    # create transaction and send it to nodes rpc port
     rpc_addr = testnet.get_validator_port(0, "rpc")
 
     lp_data = get_current_lp(testnet, action.value.id, home_dir)
@@ -514,15 +500,14 @@ def swap_out_amount(testnet: Testnet, home_dir: Path, action, outcome, pools):
 @step("ExitAndSwapAmount")
 def exit_and_swap_pool(testnet: Testnet, home_dir: Path, action, outcome, pools):
     """
-    Implements the effects of the step `exit pool`
+    Implements the effects of the step `ExitAndSwapAmount`
     on blockchain `testnet` and state `state`.
-    It additionally has access to the model (trace) state variable `action`.
+    It additionally has access to the model (trace) state variable `action`, `outcome`, `pools`.
     """
 
-    # TODO: replace the logging stub with the effects of the action `exit pool`
     logging.info("Step: exit and swap")
     # Tx Msg:
-    # osmosisd tx gamm exit-swap-extern-amount-out [token-out] [share-in-max-amount] [flags]
+    # osmosisd tx gamm exit-swap-share-amount-in [token-out-denom] [share-in-amount] [token-out-min-amount] [flags]
     logging.info(
         "Old balance of %s: %s",
         action.value.sender,
@@ -531,7 +516,6 @@ def exit_and_swap_pool(testnet: Testnet, home_dir: Path, action, outcome, pools)
     logging.info(munch.unmunchify(action))
     logging.info(munch.unmunchify(outcome))
 
-    # create transaction and send it to nodes rpc port
     rpc_addr = testnet.get_validator_port(0, "rpc")
 
     lp_data = get_current_lp(testnet, action.value.id, home_dir)
