@@ -10,12 +10,12 @@ EXTENDS Apalache, Integers, Sequences, FiniteSets, Variants, HighPrecisionDec
     @typeAlias: lpId = Int;
 
     @typeAlias: pool = {
-        id: $lpId,
-        swap_fee: Int,
-        exit_fee: Int,
-        share: Int,
-        amounts: $denom -> Int,
-        weights: $denom -> Int
+        id: $lpId,               \* Identifier for the pool
+        swap_fee: Int,           \* Fee for swapping between denominations within the pool
+        exit_fee: Int,           \* Fee for exiting the pool
+        share: Int,              \* Number of shares in the pool
+        amounts: $denom -> Int,  \* Map of denominations to amounts in the pool
+        weights: $denom -> Int   \* Map of denominations to weights for rebalancing the pool
     };
 
     @typeAlias: action =
@@ -46,17 +46,18 @@ typedefs == TRUE
 
 VARIABLES
     \* @type: Seq($pool);
-    pools,
+    pools,     \* Sequence of pools in the model
     \* @type: Str -> $denom -> Int;
-    bank,
+    bank,      \* Map of users to maps of denominations to amounts in their bank accounts
     \* @type: Str -> $lpId-> Int;
-    lp_bank,
+    lp_bank,   \* Map of users to maps of pool IDs to amounts in their liquidity provider bank accounts
 
     \* @type: $action;
-    action,
+    action,    \* The current action being performed in the model
 
     \* @type: $outcome;
-    outcome
+    outcome    \* The outcome of the current action
+
 
 
 USERS == {"A", "B", "C"}
@@ -66,11 +67,15 @@ ONE == 10^18
 
 \* @type: (a -> b, a, b) => b;
 GetOr(_map, _key, _value) ==
+    \* If key is present, returns value present
+    \* If key is not present, returns the default value
     IF _key \in DOMAIN _map THEN _map[_key] ELSE _value
 
 
 \* @type: (a -> Int, a -> Int) => a -> Int;
 MergeMap(_map1, _map2) ==
+    \* Returns merging two maps key-wise
+    \* If a key is present in both map, the merged value would be sum of both value
     [
         _key \in DOMAIN _map1 \union DOMAIN _map2 |->
         GetOr(_map1, _key, 0) + GetOr(_map2, _key, 0)
@@ -79,18 +84,27 @@ MergeMap(_map1, _map2) ==
 
 \* @type: ($pool, Int) => $pool;
 UpdatePoolShare(_pool, _user_share) ==
+    \* Updates a pool with user provided share
+    \* User provided share is signed
+    \* If user share is negative, user is leaving the pool
+    \* If user share is positive, user is joining the pool
     LET
     _user_share_dec == ToDec(_user_share)
     _pool_share_dec == ToDec(_pool.share)
     \* pool_share should never be zero
+    \* otherwise, division by zero
+    \* calculates the ratio between user provided share and current share
+    \* note, this ratio is signed
     _ratio_dec == Div(_user_share_dec, _pool_share_dec)
-    _update_amount == [_d \in DOMAIN _pool.amounts |-> Ceil(Mult(ToDec(_pool.amounts[_d]), _ratio_dec))]
+    \* computes the delta of asset amounts in new pool
+    \* Ceiling is used to avoid loss in case of precision rounding
+    _delta_amount == [_d \in DOMAIN _pool.amounts |-> Ceil(Mult(ToDec(_pool.amounts[_d]), _ratio_dec))]
     IN
     [
         _pool
         EXCEPT
         !.share = @ + _user_share,
-        !.amounts = MergeMap(@, _update_amount)
+        !.amounts = MergeMap(@, _delta_amount)
     ]
 
 
@@ -135,6 +149,9 @@ NewPool(id, amounts, weights) ==
 \* @type: (Str, $denom -> Int, $denom -> Int) => Bool;
 CreatePoolHandler(_sender, _amounts, _weights) ==
     LET
+    \* pools is represented as sequence (or array)
+    \* pool_ids are index of each pool
+    \* note, TLA+ starts sequence index from 1
     _next_pool_id == Len(pools) + 1
     _new_pool == NewPool(_next_pool_id, _amounts, _weights)
     _old_balance == bank[_sender]
@@ -151,11 +168,13 @@ CreatePoolHandler(_sender, _amounts, _weights) ==
 
 \* @type: Str => Bool;
 CreatePoolNext(_sender) ==
-    \E _lpIds \in SUBSET DOMAIN bank[_sender]:
-    \E _amounts \in [_lpIds -> Nat]:
-    \E _weights \in [_lpIds -> Nat]:
-        /\ Cardinality(_lpIds) > 1
-        /\ \A _d \in _lpIds: _amounts[_d] > 0 /\ _weights[_d] > 0
+    \E _denoms \in SUBSET DOMAIN bank[_sender]:
+    \E _amounts \in [_denoms -> Nat]:
+    \E _weights \in [_denoms -> Nat]:
+        \* a pool requires atleast two denoms
+        /\ Cardinality(_denoms) > 1
+        \* a pool requires positive amounts of assets
+        /\ \A _d \in _denoms: _amounts[_d] > 0 /\ _weights[_d] > 0
         /\ CreatePoolHandler(_sender, _amounts, _weights)
         /\ action' = Variant("CreatePool", [sender |-> _sender, amounts |-> _amounts, weights |-> _weights])
         /\ outcome' = Variant("CreatePool", [id |-> pools'[Len(pools')].id])
@@ -165,9 +184,13 @@ CreatePoolNext(_sender) ==
 UpdatePoolNext(_sender) ==
     \E _pool_id \in DOMAIN pools:
     \E _share \in Nat:
+        \* zero shares are rejected
         /\ _share > 0
-        /\ \/ /\ UpdatePoolHandler(_sender, _pool_id, _share)
+        /\
+           \* JoinPool uses the UpdatePoolHandler with positive share
+           \/ /\ UpdatePoolHandler(_sender, _pool_id, _share)
               /\ action' = Variant("JoinPool", [sender |-> _sender, id |-> _pool_id, share |-> _share])
+           \* ExitPool uses the UpdatePoolHandler with negative share
            \/ /\ UpdatePoolHandler(_sender, _pool_id, -_share)
               /\ action' = Variant("ExitPool", [sender |-> _sender, id |-> _pool_id, share |-> _share])
         /\ outcome' = Variant("UpdatePool", [
@@ -190,12 +213,13 @@ CalcAmountOut(_pool, _denom_in, _denom_out, _amount_in) ==
     \* TODO: Z3 doesn't support constraining exponents
     \* next_balance_out == Mult(current_balance_out, PowInt(Div(current_balance_in, next_balance_in), weight_ratio))
     \*
-    \* when weight_ratio is 1
+    \* when weight_ratio is 1, we can ignore the exponents
     _next_balance_out == Mult(_current_balance_out, Div(_current_balance_in, _next_balance_in))
     IN
     \* next_balance_out should never be less than actual value
     \* otherwise, users can exploit it to take out money
-    _pool.amounts[_denom_out] - Ceil(_next_balance_out)
+    \* returns delta. if amount_in is postive, amount_out should be negative and vice-versa
+    Ceil(_next_balance_out) -_pool.amounts[_denom_out]
 
 
 \* if amount is positive, we are calculating amount_out
@@ -205,9 +229,9 @@ SwapAmountHandler(_sender, _pool_id, _denom_in, _denom_out, _amount_in) ==
     LET
     _old_pool == pools[_pool_id]
     _amount_out == CalcAmountOut(_old_pool, _denom_in, _denom_out, _amount_in)
-    _new_pool == [_old_pool EXCEPT !.amounts = MergeMap(@, SetAsFun({<<_denom_in, _amount_in>>, <<_denom_out, -_amount_out>>}))]
+    _new_pool == [_old_pool EXCEPT !.amounts = MergeMap(@, SetAsFun({<<_denom_in, _amount_in>>, <<_denom_out, _amount_out>>}))]
     _old_balance == bank[_sender]
-    _new_balance == MergeMap(_old_balance, SetAsFun({<<_denom_in, -_amount_in>>, <<_denom_out, _amount_out>>}))
+    _new_balance == MergeMap(_old_balance, SetAsFun({<<_denom_in, -_amount_in>>, <<_denom_out, -_amount_out>>}))
     IN
     \* assumption: _amount_out can not be zero (CLI Error)
     /\ _amount_out /= 0
@@ -230,12 +254,23 @@ SwapAmountNext(_sender) ==
     \E _amount \in Nat:
     \E _denom_in \in DOMAIN pools[_pool_id].amounts:
     \E _denom_out \in DOMAIN pools[_pool_id].amounts:
+        \* denom in and denom out can not be the same
         /\ _denom_in /= _denom_out
+        \* required amount can not be zero
         /\ _amount > 0
-        /\ \/ /\ SwapAmountHandler(_sender, _pool_id, _denom_in, _denom_out, _amount)
+        /\
+           \* swap-exact-amount-in
+           \* Exact amount of denom-in is fixed, pool delta for denom-in is positive
+           \* Use SwapAmountHandler to compute min amount of denom-out and update the pool
+           \/ /\ SwapAmountHandler(_sender, _pool_id, _denom_in, _denom_out, _amount)
               /\ action' = Variant("SwapInAmount", [
                     sender |-> _sender, id |-> _pool_id, denom_in |-> _denom_in, denom_out |-> _denom_out, amount_in |-> _amount
                 ])
+           \* swap-exact-amount-out
+           \* Exact amount of denom-out is fixed, pool delta for denom-out is negative
+           \* Use SwapAmountHandler to compute max amount of denom-in and update the pool
+           \* note, delta of denom-out amount is negative
+           \* So SwapAmountHandler takes the current denom-out as denom-in argument and vice-versa
            \/ /\ SwapAmountHandler(_sender, _pool_id, _denom_out, _denom_in, -_amount)
               /\ action' = Variant("SwapOutAmount", [
                     sender |-> _sender, id |-> _pool_id, denom_in |-> _denom_in, denom_out |-> _denom_out, amount_out |-> _amount
@@ -246,12 +281,12 @@ SwapAmountNext(_sender) ==
 
 
 Init ==
-    \E init_balance \in Nat:
-        /\ init_balance > 0
-        \* cosmos-sdk balance upper limit
-        /\ init_balance < 2^(256-60)
+    \E genesis_balance \in Nat:
+        /\ genesis_balance > 0
+        \* cosmos-sdk balance has an upper limit
+        /\ genesis_balance < 2^(256-60)
         /\ pools = <<>>
-        /\ bank \in [USERS -> [DENOMS -> {init_balance}]]
+        /\ bank \in [USERS -> [DENOMS -> {genesis_balance}]]
         /\ lp_bank = [_u \in USERS |-> SetAsFun({})]
         /\ action = Variant("Genesis", bank)
         /\ outcome = Variant("Genesis", 0)
@@ -266,6 +301,7 @@ Next ==
 
 \* invariant
 ConstantDenomSupply ==
+    \* pool operations can not burn or mint tokens
     \A _denom \in DENOMS:
         LET
         _OldPoolAdd(_sum, _pool_id) == _sum + GetOr(pools[_pool_id].amounts, _denom, 0)
@@ -282,6 +318,7 @@ ConstantDenomSupply ==
 
 \* invariant
 ConsistentLPTokenSupply ==
+    \* pools' share supplies matche with users' bank balances
     \A _pool_id \in DOMAIN pools:
         LET
         _LPBankAdd(_sum, _user) == _sum + GetOr(lp_bank[_user], _pool_id, 0)
@@ -292,6 +329,7 @@ ConsistentLPTokenSupply ==
 
 \* invariant
 PositiveLPAmounts ==
+    \* pool shares can never be negative
     \A _pool_id \in DOMAIN pools:
         /\ \A _user \in DOMAIN lp_bank: GetOr(lp_bank[_user], _pool_id, 0) >= 0
         /\ pools[_pool_id].share >= 0
@@ -299,6 +337,7 @@ PositiveLPAmounts ==
 
 \* invariant
 PositiveDenomAmounts ==
+    \* denoms balance can never be negative
     \A _denom \in DENOMS:
         /\ \A _pool_id \in DOMAIN pools: GetOr(pools[_pool_id].amounts, _denom, 0) >= 0
         /\ \A _user \in DOMAIN bank: GetOr(bank[_user], _denom, 0) >= 0
@@ -307,6 +346,7 @@ PositiveDenomAmounts ==
 \* invariant
 \* @type: ($trace) => Bool;
 SameJoinExitShareNetPositiveDeltas(_trace) ==
+    \* Same amounts of JoinShare and ExitShare can never have net negative delta
     \A _i, _j \in DOMAIN _trace:
         LET
         _si == _trace[_i]
@@ -325,13 +365,17 @@ SameJoinExitShareNetPositiveDeltas(_trace) ==
         ) => \A _k \in DOMAIN _outcome_i.deltas: _outcome_i.deltas[_k] + _outcome_j.deltas[_k] >= 0
 
 
+\* invariant
 CexZeroPoolShare ==
+    \* Pool shares can never be zero
     \A _i \in DOMAIN pools:
         pools[_i].share > 0
 
 
+\* invariant
 \* @type: ($trace) => Bool;
 CexZeroAssetIn(_trace) ==
+    \* Joinpool modifies(increases) all pool assets
     \A _i \in DOMAIN _trace:
         LET
         _si == _trace[_i]
@@ -341,8 +385,10 @@ CexZeroAssetIn(_trace) ==
         => \A _k \in DOMAIN _outcome_i.deltas: _outcome_i.deltas[_k] /= 0
 
 
+\* invariant
 \* @type: ($trace) => Bool;
 CexZeroAssetOut(_trace) ==
+    \* Joinpool modifies(decreases) all pool assets
     \A _i \in DOMAIN _trace:
         LET
         _si == _trace[_i]
@@ -352,10 +398,14 @@ CexZeroAssetOut(_trace) ==
         => \A _k \in DOMAIN _outcome_i.deltas: _outcome_i.deltas[_k] /= 0
 
 
+\* example
+\* a trace with atleast one action from the set
 \* @type: ($trace) => Bool;
 CexCreateJoinExit(_trace) ==
     {"Genesis", "CreatePool", "JoinPool", "ExitPool"} /= {VariantTag(_trace[_i].action): _i \in DOMAIN _trace}
 
+
+\* view for Apalache
 View ==
     VariantTag(action)
 
