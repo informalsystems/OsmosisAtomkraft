@@ -1,4 +1,13 @@
 ---- MODULE HighPrecisionDec ----
+(*
+ * High-level specification of a subset of operations over Cosmos SDK decimals.
+ *
+ * Ranadeep Biswas, Informal Systems, December 2022
+ *
+ * Source:
+ * https://github.com/cosmos/cosmos-sdk/blob/v0.45.1/types/decimal.go
+ *)
+
 EXTENDS Integers
 
 \* (+-) (p / q) = <<sign, p, q>>
