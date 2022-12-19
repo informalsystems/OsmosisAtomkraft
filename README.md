@@ -34,5 +34,5 @@ The list of all the scenarios created and executed during the GAMM audit and the
 One example of executing scenatio trace is presented here:
 
 ```
-atomkraft test trace --path=traces/mp_gamm/scenarios/scenario8.itf.json --reactor=reactors/mp_gamm.py --keypath=action.tag
+atomkraft test trace --path=traces/scenarios/scenario8.itf.json --reactor=reactors/mp_gamm.py --keypath=action.tag
 ```
