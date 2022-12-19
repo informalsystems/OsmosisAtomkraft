@@ -1,5 +1,10 @@
 ---- MODULE test_dec ----
-
+(*
+ * TLA spec used to compare differences in calculations with two TLA specs.
+ *
+ * Ranadeep Biswas, Informal Systems, December 2022
+ * 
+ *)
 EXTENDS Integers
 
 Igor == INSTANCE Dec
