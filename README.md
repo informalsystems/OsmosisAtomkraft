@@ -2,17 +2,17 @@
 
 This repository is a workspace for Informal Systems' Atomkraft adaptations and TLA specs
 created specially for Osmosis audit project. 
-All the important information regarding the audit can be found in [Informal Sysytems & Osmosis partnership repository](https://github.com/informalsystems/partnership-osmosis), where Osmosis Atomkraft is placed as a submodule under the 2022/Q4 folder
+All the important information regarding the audit can be found in [Informal Systems & Osmosis partnership repository](https://github.com/informalsystems/partnership-osmosis), where Osmosis Atomkraft is placed as a submodule under the 2022/Q4 folder
 
 ### To clone just the Atomkraft artifacts Informal created during the audit
 
 ``` sh
-git clone git@github.com:Ethernal-Tech/OsmosisAtomkraft.git
+git clone git@github.com:informalsystems/OsmosisAtomkraft.git
 ```
 ### To clone all the Atomkraft artifacts, including Osmosis source code at the relevant commit that has been audited:
 
 ``` sh
-git clone --recurse-submodules git@github.com:Ethernal-Tech/OsmosisAtomkraft.git
+git clone --recurse-submodules git@github.com:informalsystems/OsmosisAtomkraft.git
 ```
 
 ### To update the submodules (Osmosis source code) if you've already cloned the repository
