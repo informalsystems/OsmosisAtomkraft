@@ -1,7 +1,13 @@
 ---- MODULE test_mp_gamm ----
 
-\* Osmosis GAMM model using multiple pools and multiple denoms
-\* Autho: Rano
+(*
+ * Osmosis GAMM model using multiple pools and multiple denoms.
+ *
+ * Ranadeep Biswas, Informal Systems, December 2022
+ *
+ * Source:
+ * https://github.com/osmosis-labs/osmosis/tree/42d73f1cc1c52e85561518be1014b730ef6b7a12/x/gamm
+ *)
 
 EXTENDS Apalache, Integers, Sequences, FiniteSets, Variants, HighPrecisionDec
 
