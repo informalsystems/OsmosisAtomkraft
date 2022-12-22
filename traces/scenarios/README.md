@@ -6,28 +6,17 @@
 atomkraft test trace --path=traces/scenarios  --reactor=reactors/mp_gamm.py --keypath=action.tag
 ```
 
-## List of test scenarios
+## Execute specific scenario
 
-Scenario: User C creates one pool, then user B joins this pool with x shares and exits the pool with x shares.
-Outcome: Pass
-Traces: traces/trace1.itf.json
+Replace $SCENARIO-ID$ with the name of desired scenario itf.json file. 
+```
+atomkraft test trace --path=traces/scenarios/$SCENARIO-ID$.itf.json  --reactor=reactors/mp_gamm.py --keypath=action.tag
+```
 
----
-
-Scenario: Outcome: Error-XX
-Traces: violation1.itf.json
+# List of test scenarios
 
 ---
-
-Scenario: Joining pools without TokenInMax arg - try joining for large number of ShareOutAmount, to try and spend users balance for denom (it seems it is possible to Join the pool without specifying this amount, but the behaviour is diff for JoinSwapShareAmountOut - not modeled with our TLA spec)
-
-Outcome:
-
-Traces:
-
----
-
-Scenario: User creates a pool and exits with the same number of shares
+### Scenario: User creates a pool and exits with the same number of shares
 
 Outcome:
 
@@ -39,31 +28,8 @@ Traces: `traces/scenarios/scenario4.itf.json`
 
 ---
 
-Scenario: Try to initialize a wallet with asset amount `(2^(256+60) - 1)`
 
-Outcome:
-
-```
-failed to parse coins: failed to parse decimal coin amount: 133499189745056880149688856635597007162669032647290798121690100488888732861290034376435130433535: decimal out of range; bitLen: got 376, max 256
-```
-
-Traces: `traces/sdk/scenario2.itf.json`
-
----
-
-Scenario: Try to initialize a wallet with asset amount `(2^256 - 1)`
-
-Outcome:
-
-```
-failed to parse coins: failed to parse decimal coin amount: 115792089237316195423570985008687907853269984665640564039457584007913129639935: decimal out of range; bitLen: got 316, max 256
-```
-
-Traces: `traces/sdk/scenario3.itf.json`
-
----
-
-Scenario: Try to initialize a wallet with asset amount `(2^(256-60) - 1)`
+### Scenario: Try to initialize a wallet with asset amount `(2^(256-60) - 1)`
 
 Outcome: Passed
 
@@ -71,7 +37,7 @@ Traces: `traces/scenarios/scenario4.itf.json`
 
 ---
 
-Scenario: Try to join a pool with a low share
+### Scenario: Try to join a pool with a low share
 
 Outcome:
 
@@ -79,11 +45,11 @@ Outcome:
 (Code 8) failed to execute message; message index: 0: share ratio is zero or negative: invalid calculated result
 ```
 
-Traces: `traces/scenarios/scenario5.itf.json`, `traces/scenarios/scenario10.itf.json`
+Traces: `traces/scenarios/scenario5.itf.json`, `traces/scenarios/scenario10.itf.json`, `traces/scenarios/scenario10.itf.json`
 
 ---
 
-Scenario: Create, Join, Exit
+### Scenario: Create, Join, Exit
 
 Outcome: Pass
 
@@ -91,7 +57,7 @@ Traces: `traces/scenarios/scenario6.itf.json`
 
 ---
 
-Scenario: Create, Exit, Join
+### Scenario: Create, Exit, Join
 
 Outcome: Pass
 
@@ -99,7 +65,7 @@ Traces: `traces/scenarios/scenario7.itf.json`
 
 ---
 
-Scenario: ExitPool min amount check is calculated incorrectly
+### Scenario: ExitPool min amount check is calculated incorrectly
 
 Outcome:
 
@@ -126,7 +92,7 @@ Traces: `traces/scenarios/scenario8.itf.json`
 
 ---
 
-Scenario: ExitPool can leave with zero assets with a low share
+### Scenario: ExitPool can leave with zero assets with a low share
 
 Outcome: Pass
 
@@ -153,7 +119,7 @@ Traces: `traces/scenarios/scenario9.itf.json`
 
 ---
 
-Scenario: Swap using a pool via `swap-exact-amount-in`
+### Scenario: Swap using a pool via `swap-exact-amount-in`
 
 Outcome: Pass
 
@@ -161,7 +127,7 @@ Traces: `traces/scenarios/scenario12.itf.json`, `traces/scenarios/scenario13.itf
 
 ---
 
-Scenario: Swap using a pool via `swap-exact-amount-out`
+### Scenario: Swap using a pool via `swap-exact-amount-out`
 
 Outcome: Pass
 
@@ -169,20 +135,7 @@ Traces: `traces/scenarios/scenario14.itf.json`
 
 ---
 
-Scenario: Swap using a pool via `swap-exact-amount-out`
-
-Explanation:
-
-```
-Pool create:
-uatom: 2
-ujuno: 8
-
-Pool swap out exact:
-denom_in: uatom
-denom_out: ujuno
-amount_out: 4
-```
+### Scenario: Swap using a pool via `swap-exact-amount-out`
 
 Outcome: Recovered panic
 
@@ -259,11 +212,29 @@ created by github.com/tendermint/tendermint/consensus.(*State).OnStart
 : panic
 ```
 
+Explanation:
+
+```
+Pool create:
+uatom: 2
+ujuno: 8
+
+Pool swap out exact:
+denom_in: uatom
+denom_out: ujuno
+amount_out: 4
+
+
+Osmosisd panics in cases when trying to swap exact or more that 50% of the denom balance from the pool.
+```
+
+
+
 Traces: `traces/scenarios/scenario15.itf.json`
 
 ---
 
-Scenario: Swap using a pool via `swap-exact-amount-out`
+### Scenario: Swap using a pool via `swap-exact-amount-out`
 
 Outcome: Two panics
 
@@ -278,14 +249,36 @@ Failure: (Code 111222) recovered: base must be greater than 0
 ...
 : panic
 ```
+Explanation:
+
+```
+Pool create:
+uosmo: 3
+uatom: 100000000000000000003
+ujuno: 2
+
+1. Pool swap out exact:
+denom_in: uatom
+denom_out: ujuno
+amount_out: 1
+
+2. Pool swap out exact:
+denom_in: ujuno
+denom_out: uatom
+amount_out: 150000000000000000004
+
+
+Osmosisd panics in cases when trying to swap exact or more that 50% of the denom balance from the pool
+and for the second panic, when trying to swap out more than containing in the pool.
+```
 
 Traces: `traces/scenarios/scenario16.itf.json`
 
 ---
+s
+### Scenario: Swap using a pool via `swap-exact-amount-out`
 
-Scenario: Swap using a pool via `swap-exact-amount-out`
-
-Outcome: Two panics
+Outcome: panic
 
 ```
 Failure: (Code 111222) recovered: division by zero
@@ -293,23 +286,76 @@ Failure: (Code 111222) recovered: division by zero
 : panic
 ```
 
+Explanation: scenario contains multiple steps impacting to the final step producing this error.
+
+As the result of prior executions the balance in the pool with Id = 3 is as follows:
+
+```
+[Pool status]:  {... 
+'pool_params': {'swap_fee': '0.000000000000000000',   
+'exit_fee': '0.000000000000000000',   
+'smooth_weight_change_params': None},  
+'future_pool_governor': '',  
+'total_shares': {'denom': 'gamm/pool/3', 'amount': '99999999999999999999'},   
+'pool_assets': [{'token': {'denom': 'uatom', 'amount': '1'}, 'weight': '1073741824'}, {'token': {'denom': 'uosmo', 'amount': '1'}, 'weight': '1073741824'}],  
+'total_weight': '2147483648'}  
+
+```
+then with next step:
+```
+swap-exact-amount-out:
+amount_out: 1  
+denom_in: uatom  
+denom_out: uosmo  
+
+
+Osmosisd panics in cases when doing swap-exit-amount-out for amount_out being equal to the balance of the token in the pool.
+```
+
 Traces: `traces/scenarios/scenario17.itf.json`
 
 ---
 
-Scenario: Join pool
+### Scenario: Join pool 
 
 Outcome:
 
 ```
 Failure: (Code 1) failed to execute message; message index: 0: unexpected error in MaximalExactRatioJoin
 ```
+Explanation: scenario contains multiple steps impacting to the final step producing this error.
 
-Traces: `traces/scenarios/scenario18.itf.json`, `traces/scenarios/scenario20.itf.json`
+As the result of prior executions the balance in the pool with Id = 2 is as follows:
+
+```
+[Pool status]: 
+{...
+'pool_params': {'swap_fee': '0.000000000000000000',  
+'exit_fee': '0.000000000000000000',  
+'smooth_weight_change_params': None},  
+'future_pool_governor': '',   
+'total_shares': {'denom': 'gamm/pool/2', 'amount': '200000000000000000000'},   
+'pool_assets': [{'token': {'denom': 'ujuno', 'amount': '2'}, 'weight': '1073741824'}, {'token': {'denom': 'uosmo', 'amount': '2'},  
+'weight': '1073741824'}],   
+'total_weight': '2147483648'}
+```
+then with next step:
+```
+join pool:	
+max-amounts-in: 49999999999999999998uosmo  49999999999999999998ujuno
+share-amount-out 3333333333333333333216666666666666666666
+
+
+
+Osmosisd returns error in calculation of `MaximalExactRatioJoin` because `minShareRatio` is equal to `maxSortableDec` - `shareRatio` was not less or equal to `minShareRatio`.
+```
+
+
+Traces: `traces/scenarios/scenario18.itf.json`
 
 ---
 
-Scenario: Swap in amount
+### Scenario: Swap in amount
 
 Outcome:
 
@@ -317,12 +363,33 @@ Outcome:
 Failure: (Code 1) failed to execute message; message index: 0: function swapExactAmountIn failed due to internal reason: base must be greater than 0
 ```
 
+Explanation: scenario contains multiple steps impacting to the final step producing this error.
+
+As the result of prior executions the balance in the pool with Id = 1 is as follows:
+
+```
+[Pool status]: 
+{'@type': '/osmosis.gamm.v1beta1.Pool', 'address': 'osmo1mw0ac6rwlp5r8wapwk3zs6g29h8fcscxqakdzw9emkne6c8wjp9q0t3v8t', 'id': '1', 'pool_params': {'swap_fee': '0.000000000000000000',   
+'exit_fee': '0.000000000000000000',    
+'smooth_weight_change_params': None},   
+'future_pool_governor': '',   
+'total_shares': {'denom': 'gamm/pool/1', 'amount': '100000000000000000000'},  
+'pool_assets': [{'token': {'denom': 'uatom', 'amount': '2'}, 'weight': '1073741824'}, {'token': {'denom': 'ujuno', 'amount': '50000000000000000000'}, 'weight': '1073741824'}],  
+'total_weight': '2147483648'}
+```
+then with next step:
+```
+swap-exact-amount-in:
+tokenIn: 11111111111111111111uatom
+token-out-min-amount 11111111111111111110
+swap-route-pool-ids: 1
+swap-route-denoms: ujuno
+
+Osmosisd is probably panicking due to taking out  >50% amount from the pool.
+```
+
+
 Traces: `traces/scenarios/scenario19.itf.json`, `traces/scenarios/scenario20.itf.json`
 
 ---
 
-Scenario: Create, join and exit pools with more than two denominations. (Info: ValidateBasic will reject creation of pools with more than 8 denominations)
-
-Outcome:
-
-Traces:
