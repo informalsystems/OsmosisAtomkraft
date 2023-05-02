@@ -31,7 +31,7 @@ DecOne ==
 \* @type: ($decimal) => $decimal;
 Neg(a) ==
     \* Negates the sign of a decimal
-    <<~a[1], a[3], a[2]>>
+    <<~a[1], a[2], a[3]>>
 
 \* @type: ($decimal, $decimal) => $decimal;
 Add(a, b) ==
