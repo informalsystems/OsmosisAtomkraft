@@ -45,7 +45,7 @@ Add(a, b) ==
     q_b == b[3]
     \* Adds the fractions
     _p_c == p_a * q_b + q_a * p_b
-    q_c == p_b * q_b
+    q_c == q_a * q_b
     \* Converts the result back to a decimal
     p_c == Abs(_p_c)
     s_c == _p_c < 0
